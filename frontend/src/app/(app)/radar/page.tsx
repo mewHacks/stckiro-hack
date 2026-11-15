@@ -1,23 +1,26 @@
-import { Navigation, Search } from "lucide-react";
+import { Lock, Navigation } from "lucide-react";
 import RadarMap from "@/components/RadarMap";
+import { LIVE_POS } from "@/lib/data";
 
 const LEGEND = [
   { c: "bg-red-500", t: "Critical" },
   { c: "bg-orange-500", t: "Needs help" },
   { c: "bg-brand", t: "Rescuers" },
+  { c: "bg-sky ring-2 ring-brand", t: "You" },
 ];
 
 export default function Radar() {
   return (
     <div className="relative h-full">
       <div className="absolute inset-0">
-        <RadarMap />
+        <RadarMap you={LIVE_POS} />
       </div>
 
       <div className="relative space-y-3 px-5 pt-6">
         <h1 className="text-[26px] text-navy">RescueRadar</h1>
-        <div className="pill flex items-center gap-2 px-4 py-3 text-sm text-ink">
-          <Search size={16} /> Search areas or evacuation centres
+        <div className="pill flex items-start gap-2 px-4 py-3 text-xs font-bold text-navy">
+          <Lock size={15} className="mt-px shrink-0 text-brand" />
+          <span>You can see yourself, the rescue teams and other victims nearby.</span>
         </div>
         <div className="flex gap-2">
           {LEGEND.map((l) => (

@@ -14,31 +14,22 @@ def latlng(x, y):  # frontend map units → real coordinates (100 units ≈ 1 km
     return C_LAT - (y - 250) / 100 / 111.32, C_LNG + (x - 200) / 100 / (111.32 * math.cos(math.radians(C_LAT)))
 
 
-# name, bag, x, y, priority, reason, via, minutes ago, steps to advance (1 = Assigned, 2 = Rescued)
+# Nearby victims who have NOT pressed SOS: reason stays empty, so the rescuer dashboard does not list them.
+# They only show on a victim's own radar. A row becomes an SOS (a priority on the dashboard) when the app sends a reason.
 PEOPLE = [
-    ("Aisyah R.", "FS-2041", 150, 210, "critical", "Trapped by rising water", "mesh", 1, 0),
-    ("Kumar S.", "FS-1187", 175, 240, "critical", "Medical emergency", "mesh", 3, 0),
-    ("Lim W.", "FS-0932", 255, 300, "high", "Need evacuation", "internet", 6, 1),
-    ("Nurul H.", "FS-3310", 130, 250, "high", "Injured", "mesh", 9, 0),
-    ("Tan K.", "FS-0458", 300, 160, "high", "Need evacuation", "internet", 14, 2),
-    ("Farid A.", "FS-2210", 110, 300, "critical", "Trapped by rising water", "mesh", 2, 0),
-    ("Mei Ling C.", "FS-1903", 230, 330, "high", "Elderly / child with me", "internet", 4, 0),
-    ("Ravi P.", "FS-0771", 200, 200, "high", "Need evacuation", "internet", 7, 0),
-    ("Siti Z.", "FS-3055", 60, 420, "high", "Elderly / child with me", "mesh", 11, 0),
-    ("Hafiz M.", "FS-1420", 340, 210, "high", "Injured", "internet", 18, 1),
+    ("Aisyah R.", "FS-2041", 150, 210), ("Kumar S.", "FS-1187", 175, 240), ("Lim W.", "FS-0932", 255, 300),
+    ("Nurul H.", "FS-3310", 130, 250), ("Tan K.", "FS-0458", 300, 160), ("Farid A.", "FS-2210", 110, 300),
+    ("Mei Ling C.", "FS-1903", 230, 330), ("Ravi P.", "FS-0771", 200, 200), ("Siti Z.", "FS-3055", 60, 420),
+    ("Hafiz M.", "FS-1420", 340, 210),
 ]
 
 with httpx.Client(base_url=API, timeout=10) as c:
     if c.get("/api/victims").json() and "--force" not in sys.argv:
         sys.exit("victims already present; re-run with --force to add the demo set again")
     now = int(time.time() * 1000)
-    for name, bag, x, y, pri, reason, via, mins, _ in PEOPLE:
+    for i, (name, bag, x, y) in enumerate(PEOPLE):
         lat, lng = latlng(x, y)
-        body = {"bag": bag, "at": now - mins * 60_000, "reason": reason, "priority": pri, "battery": 60,
+        body = {"bag": bag, "at": now - i * 1000, "reason": "", "priority": "high",
                 "profile": {"name": name}, "location": {"lat": lat, "lng": lng, "accuracyM": 5}, "beacon": {"connected": True}}
-        c.post(f"/api/sos?via={via}", json=body).raise_for_status()
-    ids = {v["name"]: v["id"] for v in c.get("/api/victims").json()}
-    for name, *_, steps in PEOPLE:
-        for _ in range(steps):
-            c.patch(f"/api/victims/{ids[name]}").raise_for_status()
-    print(f"seeded {len(PEOPLE)} victims")
+        c.post("/api/sos", json=body).raise_for_status()
+    print(f"seeded {len(PEOPLE)} nearby victims (not SOS)")

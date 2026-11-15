@@ -37,6 +37,7 @@ export type Request = {
   apiId?: number; // set when the row comes from the backend (PATCH target)
   photo?: string; // profile photo, when we have one
   battery?: number;
+  ts?: number; // epoch seconds the alert arrived (lets the dashboard hide older alerts)
   noLoc?: boolean; // alert had no GPS fix: listed, but not drawn on the map
   x: number; // map coords, viewBox 400x500; 100 units ≈ 1 km
   y: number;

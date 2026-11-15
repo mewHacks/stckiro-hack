@@ -10,7 +10,7 @@ import RadarSvg, { type Focus } from "./RadarSvg";
 // Real Google map when a key is configured, otherwise the offline SVG sketch.
 const KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
 
-export default function RadarMap(props: { requests?: Request[]; rescuers?: Rescuer[]; showRoute?: boolean; focus?: Focus }) {
+export default function RadarMap(props: { requests?: Request[]; rescuers?: Rescuer[]; you?: { x: number; y: number }; showRoute?: boolean; focus?: Focus }) {
   const live = useLive(); // backend data (or built-in demo data when the backend is down)
   const requests = props.requests ?? live.victims;
   const rescuers = props.rescuers ?? live.rescuers;

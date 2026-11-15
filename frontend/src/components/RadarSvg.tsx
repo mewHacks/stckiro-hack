@@ -5,11 +5,13 @@ export type Focus = { x: number; y: number; r: number };
 export default function RadarSvg({
   requests = REQUESTS,
   rescuers = RESCUERS,
+  you,
   showRoute = true,
   focus,
 }: {
   requests?: Request[];
   rescuers?: Rescuer[];
+  you?: { x: number; y: number };
   showRoute?: boolean;
   focus?: Focus; // "nearby" radius around the selected rescue team
 }) {
@@ -51,7 +53,7 @@ export default function RadarSvg({
       )}
 
       {/* heat */}
-      {requests.filter((r) => r.status !== "Rescued" && !r.noLoc).map((r) => (
+      {requests.filter((r) => r.status !== "Rescued" && !r.noLoc && r.reason).map((r) => (
         <circle key={`h${r.id}`} cx={r.x} cy={r.y} r={30 + r.severity * 14} fill="url(#heat)" />
       ))}
 
@@ -64,10 +66,10 @@ export default function RadarSvg({
 
       {/* victims */}
       {requests.filter((r) => !r.noLoc).map((r) => {
-        const c = r.status === "Rescued" ? "#10b981" : r.severity === 3 ? "#ef4444" : "#f97316";
+        const c = r.status === "Rescued" ? "#10b981" : !r.reason ? "#64748b" : r.severity === 3 ? "#ef4444" : "#f97316";
         return (
           <g key={r.id}>
-            {r.status === "Pending" && (
+            {r.status === "Pending" && r.reason && (
               <circle cx={r.x} cy={r.y} r="8" fill={c} opacity="0.4">
                 <animate attributeName="r" values="8;20;8" dur="1.8s" repeatCount="indefinite" />
                 <animate attributeName="opacity" values="0.4;0;0.4" dur="1.8s" repeatCount="indefinite" />
@@ -90,6 +92,13 @@ export default function RadarSvg({
           <text y="5" textAnchor="middle" fontSize="13" fontWeight="900" fill="#fff">{t.id[0]}</text>
         </g>
       ))}
+      {you && (
+        <g>
+          <circle cx={you.x} cy={you.y} r="10" fill="#3f6df0" opacity="0.35"><animate attributeName="r" values="10;26;10" dur="2s" repeatCount="indefinite" /><animate attributeName="opacity" values="0.35;0;0.35" dur="2s" repeatCount="indefinite" /></circle>
+          <circle cx={you.x} cy={you.y} r="9" fill="#3f6df0" stroke="#fff" strokeWidth="4" />
+          <text x={you.x + 16} y={you.y + 5} fontSize="13" fontWeight="900" fill="#2548d4">You</text>
+        </g>
+      )}
     </svg>
   );
 }

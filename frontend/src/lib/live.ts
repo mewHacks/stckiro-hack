@@ -25,7 +25,7 @@ const toRequest = (v: ApiVictim): Request => {
     id: `api-${v.id}`, apiId: v.id, name: v.name, people: v.people, severity: v.severity as 1 | 2 | 3, last: ago(v.last), status: v.status, via: v.via,
     area: v.area || (has ? `${v.lat!.toFixed(3)}°N, ${v.lng!.toFixed(3)}°E` : "No GPS fix"),
     reason: v.reason || undefined, lastSignal: /lastsignal/i.test(v.reason ?? ""), battery: v.battery ?? undefined,
-    photo: photoFor(v.name), noLoc: !has, x: p.x, y: p.y,
+    photo: photoFor(v.name), ts: v.last, noLoc: !has, x: p.x, y: p.y,
   };
 };
 
