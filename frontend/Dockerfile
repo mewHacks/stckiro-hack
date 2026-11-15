@@ -8,6 +8,8 @@ COPY . .
 # build args, not runtime env. Add any other NEXT_PUBLIC_* var the same way.
 ARG NEXT_PUBLIC_API_URL=http://localhost:5000
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_GOOGLE_MAPS_KEY
+ENV NEXT_PUBLIC_GOOGLE_MAPS_KEY=$NEXT_PUBLIC_GOOGLE_MAPS_KEY
 RUN mkdir -p public && npm run build
 
 FROM node:22-alpine
