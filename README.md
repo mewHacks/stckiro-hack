@@ -4,7 +4,7 @@
 
 ### *Protect what matters. Stay connected when it matters most.*
 
-![LiveBuoy: the backpack floating on the flood, held by its owner](docs/cover.png)
+![LiveBuoy: the flood-ready backpack on rising water](docs/cover.jpg)
 
 **A waterproof backpack that keeps your documents dry and sends your SOS even when the phone network is down.**
 
