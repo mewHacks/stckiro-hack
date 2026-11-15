@@ -111,6 +111,10 @@ cd backend && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 cd frontend && npm install && npm run dev        # http://localhost:3000
 ```
 
+# 3. Env
+Add in the relevant keys, one from Supabase in backend/.env and one in Frontend as .env.local with the Google maps key as shown in example.
+
+
 The app talks to `http://localhost:8000` (override with `NEXT_PUBLIC_API_URL`). If the backend is down, the dashboard falls back to built-in demo data and says so, and the phone app sends SOS over the simulated mesh instead.
 
 Optional frontend variable (in git-ignored `frontend/.env.local`): `NEXT_PUBLIC_GOOGLE_MAPS_KEY` for the real map; without it an offline map is shown.
