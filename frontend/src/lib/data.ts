@@ -4,6 +4,7 @@ export type VaultItem = {
   id: "medical" | "passport" | "id" | "cash" | "beacon";
   name: string;
   note: string;
+  fields: [string, string][]; // shown in the detail panel
   sub: string; // printed on the 3D item
   bg: string;
   fg: string;
@@ -14,11 +15,11 @@ export type VaultItem = {
 
 export const ITEMS: VaultItem[] = [
   // positions fit the backpack interior (≈1.1 wide × 0.5 deep), back row z<0, front row z>0
-  { id: "medical", name: "Medical Record", note: "Blood type O+ · Asthma inhaler", sub: "MEDICAL", bg: "#fff4e0", fg: "#c2410c", size: [0.42, 0.7, 0.04], x: -0.3, z: -0.13 },
-  { id: "passport", name: "Passport", note: "Expires 2031 · Scan synced", sub: "PASSPORT", bg: "#1e2a5a", fg: "#f5d27a", size: [0.34, 0.5, 0.04], x: 0.13, z: -0.13 },
-  { id: "cash", name: "Emergency Cash", note: "RM 500 in sealed sleeve", sub: "RM 500", bg: "#d9f5e3", fg: "#15803d", size: [0.36, 0.4, 0.1], x: 0.26, z: 0.12 },
-  { id: "id", name: "Identity Card", note: "MyKad · Birth certificate copy", sub: "ID CARD", bg: "#eef4ff", fg: "#2548d4", size: [0.44, 0.28, 0.04], x: -0.24, z: 0.12 },
-  { id: "beacon", name: "FloodMesh Beacon", note: "Battery 82% · GNSS locked", sub: "BEACON", bg: "#0b1530", fg: "#7dd3fc", size: [0.2, 0.26, 0.12], x: 0.43, z: -0.13 },
+  { id: "medical", name: "Medical Record", note: "Blood type O+ · Asthma inhaler", fields: [["Blood type","O+"],["Conditions","Asthma"],["Allergies","Penicillin"],["Medication","Inhaler (in bag)"],["Doctor","Dr. Tan · +60 3-1234 5678"]], sub: "MEDICAL", bg: "#fff4e0", fg: "#c2410c", size: [0.42, 0.7, 0.04], x: -0.3, z: -0.13 },
+  { id: "passport", name: "Passport", note: "Expires 2031 · Scan synced", fields: [["Holder","Aisyah Rahman"],["Passport no.","A12345678"],["Nationality","Malaysian"],["Expires","14 Mar 2031"],["Digital copy","Synced"]], sub: "PASSPORT", bg: "#1e2a5a", fg: "#f5d27a", size: [0.34, 0.5, 0.04], x: 0.13, z: -0.13 },
+  { id: "cash", name: "Emergency Cash", note: "RM 500 in sealed sleeve", fields: [["Amount","RM 500"],["Notes","5 × RM 100"],["Packing","Sealed waterproof sleeve"],["Last checked","3 days ago"]], sub: "RM 500", bg: "#d9f5e3", fg: "#15803d", size: [0.36, 0.4, 0.1], x: 0.26, z: 0.12 },
+  { id: "id", name: "Identity Card", note: "MyKad · Birth certificate copy", fields: [["Holder","Aisyah Rahman"],["MyKad no.","•••••• -••-••12"],["Includes","Birth certificate copy"],["Digital copy","Synced"]], sub: "ID CARD", bg: "#eef4ff", fg: "#2548d4", size: [0.44, 0.28, 0.04], x: -0.24, z: 0.12 },
+  { id: "beacon", name: "FloodMesh Beacon", note: "Battery 82% · GNSS locked", fields: [["Battery","82%"],["GPS","Locked · 3 m"],["Mesh nodes","4 in range"],["Firmware","v0.4.2"],["LastSignal","Armed at 5%"]], sub: "BEACON", bg: "#0b1530", fg: "#7dd3fc", size: [0.2, 0.26, 0.12], x: 0.43, z: -0.13 },
 ];
 
 export type Status = "Pending" | "Assigned" | "Rescued";
