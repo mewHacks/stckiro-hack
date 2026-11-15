@@ -1,26 +1,59 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ponytail: Feather Bold is Duolingo's proprietary font — drop a licensed
+   FeatherBold.woff2 into public/fonts/ and it takes over; else Nunito Black. */
+@font-face {
+  font-family: "Feather Bold";
+  src: url("/fonts/FeatherBold.woff2") format("woff2");
+  font-weight: 700 900;
+  font-display: swap;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-nunito), ui-rounded, system-ui, sans-serif;
+  --font-display: "Feather Bold", var(--font-nunito), ui-rounded, sans-serif;
+  --color-navy: #0b1530;
+  --color-brand: #3f6df0;
+  --color-brand-deep: #2548d4;
+  --color-sky: #dbe8ff;
+  --color-ink: #5b6b8c;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: #0b1530;
+  font-family: var(--font-sans);
+  background: linear-gradient(160deg, #c9d9ff 0%, #e6eeff 55%, #cfe1ff 100%) fixed;
+}
+
+h1, h2, h3, .font-display {
+  font-family: var(--font-display);
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+
+@utility app-bg {
+  background: radial-gradient(130% 55% at 50% -5%, #5d8cff 0%, #9dbdff 38%, #e4edff 72%, #f4f7ff 100%);
+}
+@utility glass {
+  background: rgb(255 255 255 / 0.62);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgb(255 255 255 / 0.8);
+  box-shadow: 0 10px 30px rgb(63 109 240 / 0.14);
+}
+@utility pill {
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgb(63 109 240 / 0.18);
+}
+@utility btn-dark {
+  background: #0b1530;
+  color: #fff;
+  border-radius: 20px;
+  font-weight: 800;
+  box-shadow: 0 10px 24px rgb(11 21 48 / 0.25);
+}
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
 }
