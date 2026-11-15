@@ -1,11 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ArrowLeft, Radio, Users, Wifi } from "lucide-react";
 import Logo from "@/components/Logo";
 import RadarMap from "@/components/RadarMap";
-import { LIVE_POS, REQUESTS, RESCUERS, type Request, type Status } from "@/lib/data";
+import { avatar, LIVE_POS, REQUESTS, RESCUERS, type Request, type Status } from "@/lib/data";
 import { useLiveSosRaw, type LiveSos } from "@/lib/net";
 
 const NEXT: Record<Status, Status | null> = { Pending: "Assigned", Assigned: "Rescued", Rescued: null };
@@ -62,7 +63,7 @@ export default function Admin() {
           </Link>
           <Logo size={44} />
           <div>
-            <h1 className="text-2xl md:text-3xl">Buoyant Rescue</h1>
+            <h1 className="text-2xl md:text-3xl">LiveBuoy Rescue</h1>
             <p className="text-sm font-semibold text-ink">Command dashboard · Klang Valley flood</p>
           </div>
         </div>
@@ -130,6 +131,7 @@ export default function Admin() {
               return (
                 <li key={r.id} className={`flex items-center gap-3 rounded-2xl bg-white p-3 ${near ? "" : "opacity-60"} ${r.id.startsWith("LIVE") ? "ring-2 ring-red-400" : ""}`}>
                   <span className={`h-10 w-1.5 rounded-full ${r.severity === 3 ? "bg-red-500" : r.severity === 2 ? "bg-orange-400" : "bg-sky"}`} />
+                  <Image src={avatar(r.id)} alt={r.name} width={44} height={44} className="size-11 shrink-0 rounded-full object-cover ring-2 ring-white" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-extrabold">{r.name}</p>
                     <p className="flex flex-wrap items-center gap-1 text-xs font-semibold text-ink">

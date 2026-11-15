@@ -19,7 +19,7 @@ export const ITEMS: VaultItem[] = [
   { id: "passport", name: "Passport", note: "Expires 2031 · Scan synced", fields: [["Holder","Aisyah Rahman"],["Passport no.","A12345678"],["Nationality","Malaysian"],["Expires","14 Mar 2031"],["Digital copy","Synced"]], sub: "PASSPORT", bg: "#1e2a5a", fg: "#f5d27a", size: [0.34, 0.5, 0.04], x: 0.13, z: -0.13 },
   { id: "cash", name: "Emergency Cash", note: "RM 500 in sealed sleeve", fields: [["Amount","RM 500"],["Notes","5 × RM 100"],["Packing","Sealed waterproof sleeve"],["Last checked","3 days ago"]], sub: "RM 500", bg: "#d9f5e3", fg: "#15803d", size: [0.36, 0.4, 0.1], x: 0.26, z: 0.12 },
   { id: "id", name: "Identity Card", note: "MyKad · Birth certificate copy", fields: [["Holder","Aisyah Rahman"],["MyKad no.","•••••• -••-••12"],["Includes","Birth certificate copy"],["Digital copy","Synced"]], sub: "ID CARD", bg: "#eef4ff", fg: "#2548d4", size: [0.44, 0.28, 0.04], x: -0.24, z: 0.12 },
-  { id: "beacon", name: "FloodMesh Beacon", note: "Battery 82% · GNSS locked", fields: [["Battery","82%"],["GPS","Locked · 3 m"],["Mesh nodes","4 in range"],["Firmware","v0.4.2"],["LastSignal","Armed at 5%"]], sub: "BEACON", bg: "#0b1530", fg: "#7dd3fc", size: [0.2, 0.26, 0.12], x: 0.43, z: -0.13 },
+  { id: "beacon", name: "FloodMesh Beacon", note: "Built into the front pocket · swappable battery", fields: [["GPS","Locked · 3 m"],["Mesh nodes","4 in range"],["Firmware","v0.4.2"],["LastSignal","Armed at 5%"]], sub: "BEACON", bg: "#0b1530", fg: "#7dd3fc", size: [0.2, 0.26, 0.12], x: 0.43, z: -0.13 },
 ];
 
 export type Status = "Pending" | "Assigned" | "Rescued";
@@ -56,3 +56,14 @@ export const RESCUERS = [
   { id: "Alpha", x: 90, y: 380 },
   { id: "Bravo", x: 320, y: 90 },
 ];
+
+/** Profile photo for a victim; the live demo SOS comes from FS-2041's phone. */
+export const avatar = (id: string) => `/people/${id.startsWith("LIVE") ? "FS-2041" : id}.jpg`;
+
+// Map coords → real coordinates around Shah Alam / Klang (100 map units ≈ 1 km)
+const CENTER = { lat: 3.0738, lng: 101.5183 };
+export const MAP_CENTER = CENTER;
+export const toLatLng = (x: number, y: number) => ({
+  lat: CENTER.lat - (y - 250) / 100 / 111.32,
+  lng: CENTER.lng + (x - 200) / 100 / (111.32 * Math.cos((CENTER.lat * Math.PI) / 180)),
+});

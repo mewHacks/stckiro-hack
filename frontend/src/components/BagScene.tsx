@@ -19,6 +19,8 @@ export type BagSceneProps = {
   onToggle: () => void;
   onSelect: (id: Id | null) => void;
   onSos?: () => void;
+  battery: number; // 0-100, beacon cell charge
+  swapping: boolean; // battery cell is ejected for a swap
 };
 
 // ---------- springs: overshoot + settle reads far livelier than lerp ----------
@@ -142,12 +144,6 @@ function Item({ it, index, open, selected, onPick }: { it: VaultItem; index: num
         <planeGeometry args={[w * 0.96, h * 0.96]} />
         <meshStandardMaterial map={map} roughness={0.6} />
       </mesh>
-      {it.id === "beacon" && (
-        <mesh position={[w / 2 - 0.07, h / 2 + 0.02, 0]}>
-          <sphereGeometry args={[0.035, 16, 16]} />
-          <meshStandardMaterial color="#22d3ee" emissive="#22d3ee" emissiveIntensity={2.5} />
-        </mesh>
-      )}
     </group>
   );
 }
@@ -198,10 +194,16 @@ function Splash({ open }: { open: boolean }) {
 }
 
 // ---------- the roll-top backpack ----------
-function Bag({ open, selected, onToggle, onSelect, onSos }: BagSceneProps) {
+function Bag({ open, selected, onToggle, onSelect, onSos, battery, swapping }: BagSceneProps) {
   const root = useRef<THREE.Group>(null!);
   const lid = useRef<THREE.Group>(null!);
   const roll = useRef<THREE.Group>(null!);
+  const pocket = useRef<THREE.Group>(null!);
+  const cell = useRef<THREE.Group>(null!);
+  const fill = useRef<THREE.Mesh>(null!);
+  const fillMat = useRef<THREE.MeshStandardMaterial>(null!);
+  const led = useRef<THREE.MeshStandardMaterial>(null!);
+  const pocketS = useRef(sp(0)), cellS = useRef(sp(0)), level = useRef(sp(battery));
   const sos = useRef<THREE.MeshStandardMaterial>(null!);
   const drop = useRef<THREE.MeshPhysicalMaterial>(null!);
   const qr = useMemo(() => qrTexture(), []);
@@ -235,6 +237,22 @@ function Bag({ open, selected, onToggle, onSelect, onSos }: BagSceneProps) {
     const sq = step(squash.current, 1, d, 260, 10);
     const wide = 1 + (1 - sq) * 0.6;
     root.current.scale.set(SCALE * wide, SCALE * sq, SCALE * wide);
+
+    // beacon pocket: flips open (hinged at its bottom edge) when the beacon is selected
+    pocket.current.rotation.x = step(pocketS.current, selected === "beacon" ? 1.5 : 0, d, 110, 11);
+    // battery cell slides out toward the viewer during a swap, then back in
+    cell.current.position.z = step(cellS.current, swapping ? 0.55 : 0, d, 140, 12);
+    cell.current.position.y = -0.58 + (swapping ? 0.06 : 0);
+    const lv = step(level.current, battery, d, 90, 16);
+    const frac = THREE.MathUtils.clamp(lv / 100, 0.001, 1);
+    fill.current.scale.x = frac;
+    fill.current.position.x = -0.19 * (1 - frac);
+    const c = lv > 50 ? "#22c55e" : lv > 20 ? "#f59e0b" : "#ef4444";
+    fillMat.current.color.set(c);
+    fillMat.current.emissive.set(c);
+    led.current.color.set(c);
+    led.current.emissive.set(c);
+    led.current.emissiveIntensity = swapping ? 0.1 : 1.6 + Math.sin(t * 5) * 1.2;
 
     sos.current.emissiveIntensity = 1.2 + Math.sin(t * 4) * 0.8;
     drop.current.emissiveIntensity = 0.35 + Math.sin(t * 2) * 0.25;
@@ -281,14 +299,51 @@ function Bag({ open, selected, onToggle, onSelect, onSos }: BagSceneProps) {
         {navyDark}
       </mesh>
 
-      {/* front zip pocket with the brand drop */}
-      <RoundedBox args={[W * 0.86, 0.62, 0.14]} position={[0, -0.42, D / 2 + 0.07]} radius={0.06} smoothness={4}>{navy}</RoundedBox>
-      <RoundedBox args={[W * 0.7, 0.022, 0.012]} position={[0, -0.2, D / 2 + 0.145]} radius={0.005}>{zip}</RoundedBox>
-      <RoundedBox args={[0.035, 0.1, 0.02]} position={[W * 0.35 + 0.02, -0.25, D / 2 + 0.15]} radius={0.008}>{white}</RoundedBox>
-      <mesh position={[0, -0.47, D / 2 + 0.145]} scale={0.6}>
-        <extrudeGeometry args={[DROP, DROP_EXTRUDE]} />
-        <meshPhysicalMaterial ref={drop} color={TEAL} emissive={TEAL} roughness={0.15} clearcoat={1} />
-      </mesh>
+      {/* beacon module built into the front of the pack: chip board + swappable battery.
+          Sits on a recessed plate and is hidden behind the pocket until the beacon is selected. */}
+      <group position={[0, 0, D / 2 + T / 2 + 0.02]}>
+        <RoundedBox args={[W * 0.8, 0.56, 0.02]} position={[0, -0.42, 0]} radius={0.01}><meshStandardMaterial color="#0a1236" roughness={0.7} /></RoundedBox>
+        {/* PCB */}
+        <RoundedBox args={[0.7, 0.3, 0.024]} position={[0, -0.3, 0.02]} radius={0.01}><meshStandardMaterial color="#0e8f7e" roughness={0.5} /></RoundedBox>
+        <RoundedBox args={[0.17, 0.17, 0.03]} position={[-0.2, -0.3, 0.045]} radius={0.01}><meshStandardMaterial color="#111827" roughness={0.4} /></RoundedBox>
+        <RoundedBox args={[0.11, 0.11, 0.02]} position={[0.03, -0.33, 0.04]} radius={0.01}><meshStandardMaterial color="#1f2937" roughness={0.4} /></RoundedBox>
+        {[-0.12, -0.04, 0.04, 0.12].map((x) => (
+          <RoundedBox key={x} args={[0.04, 0.025, 0.01]} position={[x, -0.2, 0.036]} radius={0.004}><meshStandardMaterial color="#f5d27a" metalness={0.8} roughness={0.3} /></RoundedBox>
+        ))}
+        <mesh position={[0.28, -0.3, 0.05]}>
+          <cylinderGeometry args={[0.012, 0.012, 0.22, 8]} />
+          <meshStandardMaterial color="#cbd5e1" metalness={0.8} roughness={0.3} />
+        </mesh>
+        <mesh position={[0.2, -0.22, 0.045]}>
+          <sphereGeometry args={[0.025, 16, 16]} />
+          <meshStandardMaterial ref={led} color="#22c55e" emissive="#22c55e" />
+        </mesh>
+        {/* battery tray + cell */}
+        <RoundedBox args={[0.52, 0.2, 0.03]} position={[0, -0.58, 0.01]} radius={0.01}><meshStandardMaterial color="#05091f" roughness={0.8} /></RoundedBox>
+        <group ref={cell} position={[0, -0.58, 0]}>
+          <RoundedBox args={[0.46, 0.15, 0.07]} position={[0, 0, 0.05]} radius={0.02}><meshStandardMaterial color="#cbd5e1" metalness={0.6} roughness={0.3} /></RoundedBox>
+          <RoundedBox args={[0.03, 0.06, 0.04]} position={[0.245, 0, 0.05]} radius={0.01}><meshStandardMaterial color="#94a3b8" metalness={0.7} roughness={0.3} /></RoundedBox>
+          <mesh position={[0, 0, 0.087]}>
+            <planeGeometry args={[0.4, 0.09]} />
+            <meshStandardMaterial color="#0b1530" />
+          </mesh>
+          <mesh ref={fill} position={[0, 0, 0.089]}>
+            <planeGeometry args={[0.38, 0.07]} />
+            <meshStandardMaterial ref={fillMat} color="#22c55e" emissive="#22c55e" emissiveIntensity={0.8} />
+          </mesh>
+        </group>
+      </group>
+
+      {/* front zip pocket with the brand drop: hinged at the bottom, flips down to reveal the module */}
+      <group ref={pocket} position={[0, -0.73, D / 2 + T / 2]}>
+        <RoundedBox args={[W * 0.86, 0.62, 0.14]} position={[0, 0.31, 0.04]} radius={0.06} smoothness={4}>{navy}</RoundedBox>
+        <RoundedBox args={[W * 0.7, 0.022, 0.012]} position={[0, 0.53, 0.115]} radius={0.005}>{zip}</RoundedBox>
+        <RoundedBox args={[0.035, 0.1, 0.02]} position={[W * 0.35 + 0.02, 0.48, 0.12]} radius={0.008}>{white}</RoundedBox>
+        <mesh position={[0, 0.26, 0.115]} scale={0.6}>
+          <extrudeGeometry args={[DROP, DROP_EXTRUDE]} />
+          <meshPhysicalMaterial ref={drop} color={TEAL} emissive={TEAL} roughness={0.15} clearcoat={1} />
+        </mesh>
+      </group>
 
       {/* lower half of the front compression strap */}
       <RoundedBox args={[0.09, 0.42, 0.02]} position={[-0.28, 0.21, front + 0.012]} radius={0.008}>{navyDark}</RoundedBox>
@@ -324,7 +379,7 @@ function Bag({ open, selected, onToggle, onSelect, onSos }: BagSceneProps) {
         </mesh>
       </group>
 
-      {ITEMS.map((it, i) => (
+      {ITEMS.filter((it) => it.id !== "beacon").map((it, i) => (
         <Item key={it.id} it={it} index={i} open={open} selected={selected === it.id} onPick={() => onSelect(selected === it.id ? null : it.id)} />
       ))}
       <Splash open={open} />
@@ -353,6 +408,18 @@ function Bag({ open, selected, onToggle, onSelect, onSos }: BagSceneProps) {
   );
 }
 
+// Swing the camera around to face the front pocket while the beacon is selected
+function FaceFront({ on }: { on: boolean }) {
+  useFrame(({ camera }, dt) => {
+    if (!on) return;
+    const r = Math.hypot(camera.position.x, camera.position.z);
+    const x = THREE.MathUtils.damp(camera.position.x, 0, 4, Math.min(dt, 1 / 30));
+    camera.position.x = x;
+    camera.position.z = Math.sqrt(Math.max(r * r - x * x, 0));
+  });
+  return null;
+}
+
 // Keep the bag as big as the viewport allows: portrait screens back the camera off to fit the width.
 function FitCamera() {
   const get = useThree((s) => s.get);
@@ -374,6 +441,7 @@ export default function BagScene(props: BagSceneProps) {
       onPointerMissed={() => props.onSelect(null)}
     >
       <FitCamera />
+      <FaceFront on={props.selected === "beacon"} />
       <ambientLight intensity={0.6} />
       <directionalLight position={[3, 5, 4]} intensity={1.7} />
       {/* ponytail: Lightformers instead of an HDR file — no network fetch, works offline at the venue */}

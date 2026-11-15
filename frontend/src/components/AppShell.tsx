@@ -20,7 +20,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* desktop-only pitch panel beside the phone */}
       <aside className="absolute left-[max(2rem,calc(50%-560px))] top-1/2 hidden max-w-xs -translate-y-1/2 lg:block">
         <Logo size={72} />
-        <p className="font-display mt-4 text-5xl text-brand-deep">Buoyant</p>
+        <p className="font-display mt-4 text-5xl text-brand-deep">LiveBuoy</p>
         <p className="mt-3 text-lg font-semibold text-ink">Protect what matters. Stay connected when it matters most.</p>
         <div className="mt-6 flex flex-wrap gap-2">
           <Link href="/admin" className="btn-dark inline-flex items-center gap-2 px-5 py-3 text-sm">

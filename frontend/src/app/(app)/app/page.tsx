@@ -20,7 +20,7 @@ export default function Home() {
           <Logo size={44} />
           <div>
             <p className="text-sm font-bold text-white/80">Stay ready,</p>
-            <h1 className="text-[28px] leading-tight text-white drop-shadow-sm">Buoyant</h1>
+            <h1 className="text-[28px] leading-tight text-white drop-shadow-sm">LiveBuoy</h1>
           </div>
         </div>
         <div className="flex gap-2">

@@ -9,7 +9,7 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: "Buoyant — Smart Emergency Safety Bag",
+  title: "LiveBuoy — Smart Emergency Safety Bag",
   description: "Protect what matters. Stay connected when it matters most.",
 };
 

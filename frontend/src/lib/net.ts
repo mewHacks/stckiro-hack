@@ -31,8 +31,8 @@ export async function serverReachable() {
 // ponytail: localStorage stands in for the backend so phone tab → admin tab works live in the demo
 export type Route = "internet" | "mesh";
 export type LiveSos = { at: number; via: Route };
-const KEY = "buoyant:sos";
-const EVT = "buoyant-sos";
+const KEY = "livebuoy:sos";
+const EVT = "livebuoy-sos";
 
 export function publishSos(via: Route) {
   localStorage.setItem(KEY, JSON.stringify({ at: Date.now(), via } satisfies LiveSos));

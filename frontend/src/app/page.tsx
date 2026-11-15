@@ -11,7 +11,7 @@ export default function BagShowcase() {
         <div className="flex items-center gap-3">
           <Logo size={48} />
           <div>
-            <h1 className="text-2xl text-white drop-shadow-sm md:text-4xl">Buoyant</h1>
+            <h1 className="text-2xl text-white drop-shadow-sm md:text-4xl">LiveBuoy</h1>
             <p className="hidden text-sm font-bold text-white/85 sm:block">Protect what matters. Stay connected when it matters most.</p>
           </div>
         </div>

@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Hand, Lock, LockOpen, ShieldCheck } from "lucide-react";
+import { BatteryCharging, Hand, Lock, LockOpen, ShieldCheck } from "lucide-react";
 import { ITEMS, type VaultItem } from "@/lib/data";
 import { ICONS } from "@/lib/icons";
 
@@ -20,10 +20,22 @@ export default function VaultViewer({ compact = false }: { compact?: boolean }) 
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Id | null>(null);
+  const [battery, setBattery] = useState(82);
+  const [swapping, setSwapping] = useState(false);
   const item = ITEMS.find((i) => i.id === selected);
 
+  // ponytail: simulated swap — cell slides out, then a fresh 100% cell slides in
+  const swap = () => {
+    if (swapping) return;
+    setSwapping(true);
+    setTimeout(() => {
+      setBattery(100);
+      setSwapping(false);
+    }, 1100);
+  };
+
   const pick = (id: Id) => {
-    setOpen(true);
+    if (id !== "beacon") setOpen(true); // the beacon is built into the front pocket, not stored inside
     setSelected((s) => (s === id ? null : id));
   };
   const toggle = () => {
@@ -32,14 +44,15 @@ export default function VaultViewer({ compact = false }: { compact?: boolean }) 
   };
 
   const scene = (
-    <BagScene open={open} selected={selected} onToggle={toggle} onSelect={setSelected} onSos={() => router.push("/sos")} />
+    <BagScene open={open} selected={selected} onToggle={toggle} onSelect={setSelected} onSos={() => router.push("/sos")} battery={battery} swapping={swapping} />
   );
 
   const bubble = item
-    ? `${item.name} — sealed & dry ✓`
+    ? `${item.name} — ${item.id === "beacon" ? `battery ${battery}%` : "sealed & dry ✓"}`
     : open
       ? "Tap any item to take it out!"
       : "I'm sealed and ready. Tap me to open!";
+  const low = battery <= 20;
 
   if (compact)
     return (
@@ -97,6 +110,27 @@ export default function VaultViewer({ compact = false }: { compact?: boolean }) 
                 <p className="text-xs font-semibold text-ink">{item.note}</p>
               </div>
             </div>
+            {item.id === "beacon" && (
+              <div className="mt-3 rounded-2xl bg-sky/60 p-3">
+                <div className="flex items-baseline justify-between">
+                  <p className="text-xs font-bold text-ink">Battery cell</p>
+                  <p className={`font-display text-2xl ${low ? "text-red-500" : battery > 50 ? "text-emerald-600" : "text-amber-500"}`}>{Math.round(battery)}%</p>
+                </div>
+                <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-white">
+                  <div className={`h-full rounded-full transition-all ${low ? "bg-red-500" : battery > 50 ? "bg-emerald-500" : "bg-amber-500"}`} style={{ width: `${battery}%` }} />
+                </div>
+                <label className="mt-3 block text-[11px] font-bold text-ink">
+                  Simulate charge level
+                  <input type="range" min={0} max={100} value={battery} disabled={swapping} onChange={(e) => setBattery(+e.target.value)} className="mt-1 w-full accent-brand" />
+                </label>
+                <button onClick={swap} disabled={swapping} className="btn-dark mt-2 flex h-11 w-full items-center justify-center gap-2 text-sm disabled:opacity-60">
+                  <BatteryCharging size={16} /> {swapping ? "Swapping…" : "Swap battery"}
+                </button>
+                <p className="mt-2 text-[11px] font-semibold text-ink">
+                  {low ? "Low: LastSignal will send one final location before shutdown." : "Hot-swappable cell. The chip keeps its mesh link while you change it."}
+                </p>
+              </div>
+            )}
             <dl className="mt-3 divide-y divide-sky">
               {item.fields.map(([k, v]) => (
                 <div key={k} className="flex justify-between gap-3 py-2 text-sm">
@@ -106,12 +140,12 @@ export default function VaultViewer({ compact = false }: { compact?: boolean }) 
               ))}
             </dl>
             <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-              <ShieldCheck size={12} /> Sealed &amp; dry
+              <ShieldCheck size={12} /> {item.id === "beacon" ? "Built in · sealed" : "Sealed & dry"}
             </span>
           </div>
         ) : (
           <p className="rounded-3xl bg-white/60 p-4 text-center text-sm font-bold text-ink">
-            {open ? "Tap a document to see its details" : "Open the bag, then tap a document"}
+            {open ? "Tap a document to see its details" : "Open the bag, then tap a document, or tap FloodMesh for the built-in beacon"}
           </p>
         )}
       </aside>
