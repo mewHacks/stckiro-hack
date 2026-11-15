@@ -28,7 +28,7 @@ export default function Admin() {
   const reqs = useMemo(() => {
     const live = liveRaw ? (JSON.parse(liveRaw) as LiveSos) : null;
     const all: Request[] = live
-      ? [{ id: `LIVE-${live.at}`, name: "Demo phone · FS-2041", area: "Taman Sri Muda", people: 4, severity: 3, last: "just now", status: "Pending", via: live.via, ...LIVE_POS }, ...REQUESTS]
+      ? [{ id: `LIVE-${live.at}`, name: "Demo phone · FS-2041", area: "Taman Sri Muda", people: 4, severity: live.priority === "high" ? 2 : 3, last: "just now", status: "Pending", via: live.via, reason: live.reason, lastSignal: live.lastSignal, ...LIVE_POS }, ...REQUESTS]
       : REQUESTS;
     return all.map((r) => ({ ...r, status: overrides[r.id] ?? r.status }));
   }, [liveRaw, overrides]);
@@ -134,6 +134,12 @@ export default function Admin() {
                   <Image src={avatar(r.id)} alt={r.name} width={44} height={44} className="size-11 shrink-0 rounded-full object-cover ring-2 ring-white" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-extrabold">{r.name}</p>
+                    {r.reason && (
+                      <p className="flex flex-wrap items-center gap-1 text-[11px] font-extrabold text-red-600">
+                        {r.reason}
+                        {r.lastSignal && <span className="rounded-full bg-navy px-1.5 py-0.5 text-white">LastSignal</span>}
+                      </p>
+                    )}
                     <p className="flex flex-wrap items-center gap-1 text-xs font-semibold text-ink">
                       <span className="font-extrabold text-brand">{r.km.toFixed(1)} km</span> · {r.area} · <Users size={12} /> {r.people} · {r.last}
                       {r.via === "mesh" ? <Radio size={12} className="text-amber-600" aria-label="via mesh" /> : <Wifi size={12} className="text-emerald-600" aria-label="via internet" />}

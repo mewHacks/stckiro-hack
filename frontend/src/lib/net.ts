@@ -30,12 +30,12 @@ export async function serverReachable() {
 // ---------- live SOS shared with the rescuer dashboard ----------
 // ponytail: localStorage stands in for the backend so phone tab → admin tab works live in the demo
 export type Route = "internet" | "mesh";
-export type LiveSos = { at: number; via: Route };
+export type LiveSos = { at: number; via: Route; reason?: string; priority?: "critical" | "high"; lastSignal?: boolean };
 const KEY = "livebuoy:sos";
 const EVT = "livebuoy-sos";
 
-export function publishSos(via: Route) {
-  localStorage.setItem(KEY, JSON.stringify({ at: Date.now(), via } satisfies LiveSos));
+export function publishSos(via: Route, info: Omit<LiveSos, "at" | "via"> = {}) {
+  localStorage.setItem(KEY, JSON.stringify({ at: Date.now(), via, ...info } satisfies LiveSos));
   dispatchEvent(new Event(EVT));
 }
 export function clearSos() {

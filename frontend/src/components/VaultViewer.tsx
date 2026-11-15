@@ -134,6 +134,8 @@ export default function VaultViewer({ compact = false, app = false }: { compact?
 
   return (
     <div className={app ? "flex flex-col" : "flex h-full flex-col lg:flex-row lg:gap-4 lg:p-4"}>
+      {!app && (
+        <>
       {/* 3D bag: 2/3 of the width on desktop */}
       <div className={`relative touch-none ${app ? "h-[320px]" : "min-h-[300px] flex-1 lg:w-2/3 lg:flex-none"}`}>
         {scene}
@@ -164,10 +166,23 @@ export default function VaultViewer({ compact = false, app = false }: { compact?
         </div>
       </div>
 
+        </>
+      )}
+
       {/* details + item tiles: 1/3 on desktop, under the bag on mobile */}
-      <aside className={`glass mb-4 flex flex-col gap-3 rounded-[28px] p-4 ${app ? "mx-4" : "mx-4 lg:mx-0 lg:mb-0 lg:w-1/3 lg:overflow-y-auto"}`}>
+      <aside className={`glass mb-4 flex flex-col gap-3 rounded-[28px] p-4 ${app ? "mx-4 mt-4" : "mx-4 lg:mx-0 lg:mb-0 lg:w-1/3 lg:overflow-y-auto"}`}>
         <div className="flex items-center justify-between">
-          <p className="font-display text-lg">{app ? `In your backpack · ${ITEMS.length} items` : "In your vault"}</p>
+          {app ? (
+            <div className="w-full">
+              <div className="flex items-baseline justify-between">
+                <p className="font-display text-xl">Backpack checklist</p>
+                <p className="text-sm font-extrabold text-emerald-600">{ITEMS.length}/{ITEMS.length} packed</p>
+              </div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-sky"><div className="h-full w-full rounded-full bg-emerald-500" /></div>
+            </div>
+          ) : (
+            <p className="font-display text-lg">In your vault</p>
+          )}
           {!app && (
             <button onClick={toggle} className="pill flex items-center gap-1.5 px-3 py-1.5 text-xs font-extrabold text-brand-deep active:scale-95">
               {open ? <Lock size={14} /> : <LockOpen size={14} />} {open ? "Seal bag" : "Open bag"}

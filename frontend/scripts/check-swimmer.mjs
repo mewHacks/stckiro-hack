@@ -1,7 +1,7 @@
 // Verifies the flood-demo swimmer never intersects the backpack.
 // Run: node scripts/check-swimmer.mjs   (from frontend/; Node ≥ 23 runs the .ts import natively)
 import * as THREE from "three";
-import { ARM_POINTS, ARM_R, BAG_PARTS, BAG_SCALE, FLOOD_BAG_POS, HAND_R, HEAD, HIPS, SHOULDER, SLEEVE_R, TORSO, bagToWorld } from "../src/lib/swimmer.ts";
+import { ARM_POINTS, ARM_R, BAG_PARTS, BAG_SCALE, FLOOD_BAG_POS, HAND_R, HEAD, HIPS, LEG, NECK, SHOULDER, SLEEVE_R, TORSO, bagToWorld } from "../src/lib/swimmer.ts";
 
 // 1. bagToWorld must match the exact three.js transform BagScene applies
 const o = new THREE.Object3D();
@@ -38,6 +38,13 @@ for (const side of [1, -1]) {
   for (const b of boxes) record(pointGap(hand, b) - HAND_R, `hand(${side}) vs ${b.name}`);
   const sh = [SHOULDER.pos[0], SHOULDER.pos[1], SHOULDER.pos[2] * side];
   for (const b of boxes) record(pointGap(sh, b) - SHOULDER.r, `shoulder(${side}) vs ${b.name}`);
+}
+// neck + legs sampled along their axes
+const along = (a, b, n = 40) => Array.from({ length: n + 1 }, (_, i) => a.map((v, k) => v + ((b[k] - v) * i) / n));
+for (const b of boxes) {
+  for (const p of along(NECK.from, HEAD.pos)) record(pointGap(p, b) - NECK.r, `neck vs ${b.name}`);
+  for (const side of [1, -1])
+    for (const p of along([LEG.from[0], LEG.from[1], LEG.from[2] * side], [LEG.to[0], LEG.to[1], LEG.to[2] * side])) record(pointGap(p, b) - LEG.r, `leg(${side}) vs ${b.name}`);
 }
 for (const b of boxes) {
   record(pointGap(HEAD.pos, b) - HEAD.r, `head vs ${b.name}`);

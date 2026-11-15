@@ -32,6 +32,8 @@ export type Request = {
   last: string;
   status: Status;
   via: "internet" | "mesh"; // how the SOS reached us
+  reason?: string; // why they pressed SOS (priority alert)
+  lastSignal?: boolean; // final transmission before the battery died
   x: number; // map coords, viewBox 400x500; 100 units ≈ 1 km
   y: number;
 };
@@ -67,3 +69,13 @@ export const toLatLng = (x: number, y: number) => ({
   lat: CENTER.lat - (y - 250) / 100 / 111.32,
   lng: CENTER.lng + (x - 200) / 100 / (111.32 * Math.cos((CENTER.lat * Math.PI) / 180)),
 });
+
+/** Why the person needs help. Sets the alert priority; everything else is sent with it regardless. */
+export const SOS_REASONS = [
+  { id: "trapped", label: "Trapped by rising water", priority: "critical" },
+  { id: "medical", label: "Medical emergency", priority: "critical" },
+  { id: "injured", label: "Injured", priority: "high" },
+  { id: "evacuate", label: "Need evacuation", priority: "high" },
+  { id: "vulnerable", label: "Elderly / child with me", priority: "high" },
+] as const;
+export type SosReason = { id: string; label: string; priority: "critical" | "high" }; // also covers the automatic "battery" reason

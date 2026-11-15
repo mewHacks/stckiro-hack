@@ -1,12 +1,12 @@
 "use client";
 
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { Environment, Float, Lightformer, OrbitControls, RoundedBox, Sky, Sparkles } from "@react-three/drei";
+import { Environment, Float, Lightformer, OrbitControls, RoundedBox, Sparkles } from "@react-three/drei";
 import { Water } from "three/examples/jsm/objects/Water.js";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { ITEMS, type VaultItem } from "@/lib/data";
-import { ARM_POINTS, ARM_R, FLOOD_BAG_POS, HAND_R, HEAD, HIPS, SHOULDER, SLEEVE_R, TORSO } from "@/lib/swimmer";
+import { ARM_POINTS, ARM_R, FLOOD_BAG_POS, HAND_R, HEAD, HIPS, LEG, NECK, SHOULDER, SLEEVE_R, TORSO } from "@/lib/swimmer";
 
 // Roll-top backpack body in local units (items in data.ts are placed against these)
 const W = 1.2, H = 1.6, D = 0.6, T = 0.06;
@@ -280,7 +280,7 @@ function Bag({ open, selected, onToggle, onSelect, onSos, battery, swapping }: B
     roll.current.scale.set(1, unroll, unroll);
 
     // intro drop/spin, blended with the flood pose: lying flat on the swimmer's chest (see lib/swimmer.ts)
-    const fl = pose.f, bob = Math.sin(t * 1.4) * 0.05;
+    const fl = pose.f, bob = floodBob(t);
     root.current.rotation.order = "YXZ";
     root.current.position.set(FLOOD_BAG_POS[0] * fl, step(fall.current, 0, d, 60, 7) + (FLOOD_BAG_POS[1] + bob) * fl, FLOOD_BAG_POS[2] * fl);
     root.current.rotation.y = step(spin.current, 0, d, 28, 8) + (Math.PI / 2) * fl;
@@ -486,8 +486,8 @@ function Bag({ open, selected, onToggle, onSelect, onSos, battery, swapping }: B
 // f: 0..1 flood progress, shared by the bag, swimmer, ocean and camera (module-level: no re-renders)
 const pose = { f: 0, on: false };
 const SUN = new THREE.Vector3(-40, 14, -90);
-const FLOOD_TARGET = new THREE.Vector3(0.9, 0.55, 0);
-const FLOOD_CAM = new THREE.Vector3(2.2, 3.3, 8.2);
+const FLOOD_TARGET = new THREE.Vector3(0.8, 0.5, 0);
+const FLOOD_CAM = new THREE.Vector3(3.2, 4.4, 12.5);
 const SKIN = "#b98a62", SHIRT = "#f4a261", SHORTS = "#334155", HAIR = "#1c1714";
 
 // Tileable ocean normal map built from integer-frequency sine waves (no texture download)
@@ -516,32 +516,110 @@ function waterNormals() {
   return t;
 }
 
+// Ocean swells: Gerstner waves [dirX, dirZ, steepness, wavelength]. Shared by the GPU (surface) and the
+// CPU (so the swimmer + bag ride exactly the same swell). Steepness sum < 1 keeps crests from folding.
+const WAVES: [number, number, number, number][] = [
+  [1.0, 0.3, 0.16, 26],
+  [0.6, 1.0, 0.12, 15],
+  [-0.4, 0.9, 0.1, 9],
+  [0.9, -0.5, 0.07, 6],
+];
+const WAVE_AMP = 0.55;
+const WAVE_SPEED = 0.7;
+const waveHeight = (x: number, z: number, t: number) =>
+  WAVES.reduce((y, [dx, dz, st, wl]) => {
+    const l = Math.hypot(dx, dz), k = (2 * Math.PI) / wl;
+    return y + (st / k) * Math.sin(k * ((dx / l) * x + (dz / l) * z - Math.sqrt(9.8 / k) * t));
+  }, 0);
+/** Vertical bob of the swimmer + bag (centre of the pair), identical for both every frame. */
+const floodBob = (clock: number) => waveHeight(0.9, 0, clock * WAVE_SPEED) * WAVE_AMP;
+
+const GERSTNER_GLSL = /* glsl */ `
+  uniform float waveAmp;
+  varying vec3 vWaveN;
+  varying float vCrest;
+  vec3 gerstner(vec4 w, vec2 p, inout vec3 tangent, inout vec3 binormal) {
+    float k = 6.28318530718 / w.w, c = sqrt(9.8 / k), a = w.z / k;
+    vec2 d = normalize(w.xy);
+    float f = k * (dot(d, p) - c * time);
+    tangent += vec3(-d.x * d.x * w.z * sin(f), d.x * w.z * cos(f), -d.x * d.y * w.z * sin(f));
+    binormal += vec3(-d.x * d.y * w.z * sin(f), d.y * w.z * cos(f), -d.y * d.y * w.z * sin(f));
+    return vec3(d.x * a * cos(f), a * sin(f), d.y * a * cos(f));
+  }
+`;
+const GERSTNER_MAIN = /* glsl */ `
+  vec4 wp = modelMatrix * vec4(position, 1.0);
+  vec3 tangent = vec3(1.0, 0.0, 0.0), binormal = vec3(0.0, 0.0, 1.0), disp = vec3(0.0);
+  ${WAVES.map((w) => `disp += gerstner(vec4(${w.map((n) => n.toFixed(3)).join(", ")}), wp.xz, tangent, binormal);`).join("\n  ")}
+  wp.xyz += disp * waveAmp;
+  vWaveN = normalize(cross(mix(vec3(0.0, 0.0, 1.0), binormal, waveAmp), mix(vec3(1.0, 0.0, 0.0), tangent, waveAmp)));
+  vCrest = disp.y;
+  mirrorCoord = wp;
+  worldPosition = wp;
+  mirrorCoord = textureMatrix * mirrorCoord;
+  vec4 mvPosition = viewMatrix * wp;
+  gl_Position = projectionMatrix * mvPosition;
+`;
+
+/** Big flat grid, very dense near the swimmer and sparse toward the horizon (fast and smooth). */
+function oceanGeometry() {
+  const g = new THREE.PlaneGeometry(2, 2, 256, 256), pos = g.attributes.position as THREE.BufferAttribute;
+  const warp = (v: number) => Math.sign(v) * 700 * Math.abs(v) ** 2.2;
+  for (let i = 0; i < pos.count; i++) pos.setXY(i, warp(pos.getX(i)), warp(pos.getY(i)));
+  g.computeBoundingSphere();
+  return g;
+}
+
 // ponytail: one ocean per page (only one canvas is mounted at a time); module cache keeps it out of React state
 let ocean: Water | null = null;
-const getOcean = () =>
-  (ocean ??= Object.assign(
-    new Water(new THREE.PlaneGeometry(800, 800), {
-      textureWidth: 512,
-      textureHeight: 512,
-      waterNormals: waterNormals(),
-      sunDirection: SUN.clone().normalize(),
-      sunColor: 0xfff4e0,
-      waterColor: 0x0b3d6e,
-      distortionScale: 2.4,
-    }),
-    { visible: false },
-  ));
+function makeOcean() {
+  const w = new Water(oceanGeometry(), {
+    textureWidth: 512,
+    textureHeight: 512,
+    waterNormals: waterNormals(),
+    sunDirection: SUN.clone().normalize(),
+    sunColor: 0xfff3dc,
+    waterColor: 0x0a5aa8,
+    distortionScale: 3,
+    fog: true,
+  });
+  const m = w.material as THREE.ShaderMaterial;
+  m.uniforms.waveAmp = { value: 0 };
+  // vertex: real swells instead of a flat plane
+  m.vertexShader = m.vertexShader
+    .replace("#include <logdepthbuf_pars_vertex>", "#include <logdepthbuf_pars_vertex>\n" + GERSTNER_GLSL)
+    .replace(/mirrorCoord = modelMatrix \* vec4\( position, 1\.0 \);[\s\S]*?gl_Position = projectionMatrix \* mvPosition;/, GERSTNER_MAIN);
+  // fragment: light follows the swell slope, foam on crests, a little sunlit teal in the wave bodies
+  m.fragmentShader = m.fragmentShader
+    .replace("varying vec4 worldPosition;", "varying vec4 worldPosition;\nuniform float waveAmp;\nvarying vec3 vWaveN;\nvarying float vCrest;")
+    .replace(
+      "vec3 surfaceNormal = normalize( noise.xzy * vec3( 1.5, 1.0, 1.5 ) );",
+      "vec3 surfaceNormal = normalize( noise.xzy * vec3( 1.5, 1.0, 1.5 ) + vec3( vWaveN.x, 0.0, vWaveN.z ) * 2.5 );",
+    )
+    .replace(
+      "gl_FragColor = vec4( outgoingLight, alpha );",
+      `float h = clamp( vCrest / 1.6, 0.0, 1.0 );
+       outgoingLight += vec3( 0.0, 0.07, 0.07 ) * smoothstep( 0.15, 0.8, h );
+       float foam = smoothstep( 0.62, 0.98, h ) * smoothstep( 0.0, 0.7, noise.x + noise.z );
+       outgoingLight = mix( outgoingLight, vec3( 0.9, 0.95, 1.0 ), foam * 0.35 * step( 0.001, waveAmp ) );
+       gl_FragColor = vec4( outgoingLight, alpha );`,
+    );
+  w.visible = false;
+  return w;
+}
+const getOcean = () => (ocean ??= makeOcean());
 
 function Ocean() {
-  useFrame((_, dt) => {
+  useFrame((s) => {
     const w = getOcean(), f = pose.f;
     w.visible = f > 0.01;
     if (!w.visible) return;
     w.rotation.x = -Math.PI / 2;
     w.position.y = -1.6 * (1 - f); // the sea rises
     const u = (w.material as THREE.ShaderMaterial).uniforms;
-    u.time.value += Math.min(dt, 1 / 30) * 0.7;
-    u.size.value = 2.2;
+    u.time.value = s.clock.elapsedTime * WAVE_SPEED; // clock-based so the CPU bob matches the GPU swell exactly
+    u.size.value = 2;
+    u.waveAmp.value = WAVE_AMP * f;
   });
   return <primitive object={getOcean()} />;
 }
@@ -569,6 +647,34 @@ const CLOUDS: { p: [number, number, number]; s: [number, number, number] }[] = [
   { p: [-200, 58, -320], s: [180, 76, 1] },
 ];
 
+const HORIZON = "#5f9fe8";
+// Hand-tuned sky: deep blue overhead → pale blue horizon, warm sun glow. Water mirrors it, so it sets the sea's colour too.
+const SKY_SHADER = {
+  uniforms: {
+    top: { value: new THREE.Color("#1559c4") },
+    horizon: { value: new THREE.Color(HORIZON) },
+    bottom: { value: new THREE.Color("#0a3f78") },
+    sunDir: { value: SUN.clone().normalize() },
+  },
+  vertexShader: /* glsl */ `
+    varying vec3 vDir;
+    void main() {
+      vDir = normalize(position);
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }`,
+  fragmentShader: /* glsl */ `
+    uniform vec3 top; uniform vec3 horizon; uniform vec3 bottom; uniform vec3 sunDir;
+    varying vec3 vDir;
+    void main() {
+      float h = vDir.y;
+      vec3 c = h > 0.0 ? mix(horizon, top, pow(h, 0.5)) : mix(horizon, bottom, pow(-h, 0.35));
+      float s = max(dot(normalize(vDir), sunDir), 0.0);
+      c += vec3(1.0, 0.92, 0.75) * (pow(s, 600.0) * 2.0 + pow(s, 12.0) * 0.25);
+      gl_FragColor = vec4(c, 1.0);
+      #include <colorspace_fragment>
+    }`,
+};
+
 function SkyAndClouds() {
   const g = useRef<THREE.Group>(null!);
   const tex = useMemo(() => cloudTexture(), []);
@@ -577,10 +683,13 @@ function SkyAndClouds() {
   });
   return (
     <group ref={g} visible={false}>
-      <Sky distance={1500} sunPosition={SUN.toArray()} turbidity={3} rayleigh={0.8} mieCoefficient={0.004} mieDirectionalG={0.85} />
+      <mesh>
+        <sphereGeometry args={[1800, 48, 24]} />
+        <shaderMaterial args={[SKY_SHADER]} side={THREE.BackSide} depthWrite={false} />
+      </mesh>
       {CLOUDS.map((c, i) => (
         <sprite key={i} position={c.p} scale={c.s}>
-          <spriteMaterial map={tex} transparent depthWrite={false} opacity={0.95} />
+          <spriteMaterial map={tex} transparent depthWrite={false} opacity={0.55} fog={false} />
         </sprite>
       ))}
     </group>
@@ -597,46 +706,56 @@ const ARMS = [1, -1].map((side) => {
     hand: curve.getPoint(1).toArray() as [number, number, number],
   };
 });
+const Y = new THREE.Vector3(0, 1, 0);
+// face direction is −y (down at the water); chin points toward +x
 const onHead = (x: number, y: number, z: number, r: number) =>
   new THREE.Vector3(x, y, z).normalize().multiplyScalar(r).add(new THREE.Vector3(...HEAD.pos)).toArray() as [number, number, number];
+/** Capsule between two points: centre, rotation, and shaft length (capsule length excludes the end caps). */
+const capsule = (a: [number, number, number], b: [number, number, number], r: number) => {
+  const va = new THREE.Vector3(...a), vb = new THREE.Vector3(...b), d = vb.clone().sub(va);
+  return { pos: va.clone().add(vb).multiplyScalar(0.5).toArray() as [number, number, number], quat: new THREE.Quaternion().setFromUnitVectors(Y, d.clone().normalize()), len: Math.max(d.length() - 2 * r, 0.01) };
+};
 
 function Swimmer() {
   const skin = <meshPhysicalMaterial color={SKIN} roughness={0.5} sheen={0.4} sheenColor="#ffd9c0" clearcoat={0.15} />;
   const shirt = <meshStandardMaterial color={SHIRT} roughness={0.75} />;
   const shorts = <meshStandardMaterial color={SHORTS} roughness={0.8} />;
   const dark = <meshStandardMaterial color="#1b1410" roughness={0.3} />;
+  const neck = capsule(NECK.from, HEAD.pos, NECK.r);
   return (
     <group>
-      <RoundedBox args={TORSO.size} position={TORSO.pos} radius={0.36} smoothness={5}>{shirt}</RoundedBox>
-      <RoundedBox args={HIPS.size} position={HIPS.pos} radius={0.3} smoothness={5}>{shorts}</RoundedBox>
-      {[1, -1].map((s) => (
-        <group key={s}>
-          <mesh position={[SHOULDER.pos[0], SHOULDER.pos[1], SHOULDER.pos[2] * s]}>
-            <sphereGeometry args={[SHOULDER.r, 24, 16]} />
-            {shirt}
-          </mesh>
-          <mesh position={[2.2, 0.04, 0.36 * s]} rotation-z={Math.PI / 2}>
-            <capsuleGeometry args={[0.23, 0.6, 8, 16]} />
-            {shorts}
-          </mesh>
-          <mesh position={[2.95, 0.05, 0.4 * s]} rotation={[0, 0.06 * s, Math.PI / 2]}>
-            <capsuleGeometry args={[0.19, 1.3, 8, 16]} />
-            {skin}
-          </mesh>
-          <mesh position={[3.75, 0.13, 0.42 * s]} rotation-z={0.5} scale={[0.26, 0.12, 0.14]}>
-            <sphereGeometry args={[1, 20, 14]} />
-            {skin}
-          </mesh>
-          <mesh position={onHead(0, 0, s, 0.4)}>
-            <sphereGeometry args={[0.09, 16, 12]} />
-            {skin}
-          </mesh>
-          <mesh position={onHead(-0.3, 0.9, 0.33 * s, 0.405)}>
-            <sphereGeometry args={[0.042, 16, 12]} />
-            {dark}
-          </mesh>
-        </group>
-      ))}
+      <RoundedBox args={TORSO.size} position={TORSO.pos} radius={0.26} smoothness={5}>{shirt}</RoundedBox>
+      <RoundedBox args={HIPS.size} position={HIPS.pos} radius={0.24} smoothness={5}>{shorts}</RoundedBox>
+      {[1, -1].map((s) => {
+        const from: [number, number, number] = [LEG.from[0], LEG.from[1], LEG.from[2] * s], to: [number, number, number] = [LEG.to[0], LEG.to[1], LEG.to[2] * s];
+        const leg = capsule(from, to, LEG.r), dir = new THREE.Vector3(...to).sub(new THREE.Vector3(...from)).normalize();
+        const kneeShort = capsule(from, new THREE.Vector3(...from).addScaledVector(dir, 0.75).toArray() as [number, number, number], LEG.r + 0.04);
+        return (
+          <group key={s}>
+            <mesh position={[SHOULDER.pos[0], SHOULDER.pos[1], SHOULDER.pos[2] * s]}>
+              <sphereGeometry args={[SHOULDER.r, 24, 16]} />
+              {shirt}
+            </mesh>
+            <mesh position={leg.pos} quaternion={leg.quat}>
+              <capsuleGeometry args={[LEG.r, leg.len, 8, 16]} />
+              {skin}
+            </mesh>
+            <mesh position={kneeShort.pos} quaternion={kneeShort.quat}>
+              <capsuleGeometry args={[LEG.r + 0.04, kneeShort.len, 8, 16]} />
+              {shorts}
+            </mesh>
+            {/* face-down: eyes and nose point at the water */}
+            <mesh position={onHead(-0.3, -0.9, 0.33 * s, 0.405)}>
+              <sphereGeometry args={[0.042, 16, 12]} />
+              {dark}
+            </mesh>
+            <mesh position={onHead(0.05, 0.1, s, 0.4)}>
+              <sphereGeometry args={[0.09, 16, 12]} />
+              {skin}
+            </mesh>
+          </group>
+        );
+      })}
       {ARMS.map((a) => (
         <group key={a.side}>
           <mesh geometry={a.skin}>{skin}</mesh>
@@ -647,24 +766,24 @@ function Swimmer() {
           </mesh>
         </group>
       ))}
-      {/* neck + head (face up, chin toward the chest) */}
-      <mesh position={[-1.2, 0.2, 0]} rotation-z={Math.PI / 2}>
-        <capsuleGeometry args={[0.17, 0.35, 8, 16]} />
+      <mesh position={neck.pos} quaternion={neck.quat}>
+        <capsuleGeometry args={[NECK.r, neck.len, 8, 16]} />
         {skin}
       </mesh>
       <mesh position={HEAD.pos}>
         <sphereGeometry args={[HEAD.r, 40, 28]} />
         {skin}
       </mesh>
-      <mesh position={HEAD.pos} rotation-z={Math.PI / 2}>
-        <sphereGeometry args={[HEAD.r + 0.025, 40, 20, 0, Math.PI * 2, 0, 1.15]} />
+      {/* hair covers the top/back of the head (facing up while the face is down) */}
+      <mesh position={HEAD.pos} rotation-z={-0.25}>
+        <sphereGeometry args={[HEAD.r + 0.025, 40, 20, 0, Math.PI * 2, 0, 1.95]} />
         <meshStandardMaterial color={HAIR} roughness={0.55} side={THREE.DoubleSide} />
       </mesh>
-      <mesh position={onHead(0.06, 1, 0, 0.43)}>
+      <mesh position={onHead(0.06, -1, 0, 0.43)}>
         <sphereGeometry args={[0.06, 16, 12]} />
         {skin}
       </mesh>
-      <mesh position={onHead(0.42, 0.88, 0, 0.405)} scale={[0.03, 0.02, 0.1]}>
+      <mesh position={onHead(0.42, -0.88, 0, 0.405)} scale={[0.03, 0.02, 0.1]}>
         <sphereGeometry args={[1, 16, 12]} />
         <meshStandardMaterial color="#7a3b33" roughness={0.5} />
       </mesh>
@@ -678,6 +797,7 @@ function Ripples() {
   useFrame((s) => {
     const f = pose.f;
     g.current.visible = f > 0.3;
+    g.current.position.y = 0.03 + floodBob(s.clock.elapsedTime) * f;
     g.current.children.forEach((m, i) => {
       const k = ((s.clock.elapsedTime * 0.35 + i / 3) % 1);
       m.scale.set(1 + k * 1.6, 1 + k * 1.6, 1);
@@ -685,7 +805,7 @@ function Ripples() {
     });
   });
   return (
-    <group ref={g} position={[0.9, 0.03, 0]} rotation-x={-Math.PI / 2} visible={false}>
+    <group ref={g} position={[0.4, 0.03, 0]} rotation-x={-Math.PI / 2} visible={false}>
       {[0, 1, 2].map((i) => (
         <mesh key={i} scale={[1, 1, 1]}>
           <ringGeometry args={[2.6, 2.7, 64]} />
@@ -706,7 +826,7 @@ function FloodScene({ flood }: { flood: boolean }) {
     const f = pose.f, g = human.current;
     g.visible = f > 0.01;
     g.scale.setScalar(Math.max(f, 0.001));
-    g.position.y = -0.6 * (1 - f) + Math.sin(s.clock.elapsedTime * 1.4) * 0.05 * f; // same bob as the bag
+    g.position.y = -0.6 * (1 - f) + floodBob(s.clock.elapsedTime) * f; // same swell as the bag
   });
   return (
     <>
@@ -720,28 +840,33 @@ function FloodScene({ flood }: { flood: boolean }) {
   );
 }
 
-// Glide the camera to a wide sea view when the flood starts, and back when it ends; free orbit afterwards
+// Glide the camera to a wide sea view when the flood starts, and back when it ends; free orbit afterwards.
+// Time-based (not per-frame) so it completes in 1.6s on any device.
+type Pose = { p: THREE.Vector3; t: THREE.Vector3 };
 function FloodCamera() {
   const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3 } | null;
-  const st = useRef<{ on: boolean; at: number; saved: { p: THREE.Vector3; t: THREE.Vector3 } | null }>({ on: false, at: -9, saved: null });
-  useFrame(({ camera, clock, size }, dt) => {
+  const st = useRef<{ on: boolean; at: number; from: Pose | null; saved: Pose | null; done: boolean }>({ on: false, at: 0, from: null, saved: null, done: true });
+  useFrame(({ camera, clock, size }) => {
     if (!controls) return;
     const s = st.current, now = clock.elapsedTime;
     if (pose.on !== s.on) {
       s.on = pose.on;
       s.at = now;
-      if (pose.on) s.saved = { p: camera.position.clone(), t: controls.target.clone() };
+      s.done = false;
+      s.from = { p: camera.position.clone(), t: controls.target.clone() };
+      if (pose.on) s.saved = { p: s.from.p.clone(), t: s.from.t.clone() };
     }
-    if (now - s.at > 1.8) return;
-    const k = 1 - Math.exp(-3.2 * Math.min(dt, 1 / 30));
+    if (s.done || !s.from) return;
+    const k = Math.min((now - s.at) / 1.6, 1), e = k * k * (3 - 2 * k);
+    let goal: Pose | null = s.saved;
     if (s.on) {
       const widen = Math.max(1, 1.3 / (size.width / size.height)); // portrait screens back off further
-      camera.position.lerp(FLOOD_CAM.clone().sub(FLOOD_TARGET).multiplyScalar(widen).add(FLOOD_TARGET), k);
-      controls.target.lerp(FLOOD_TARGET, k);
-    } else if (s.saved) {
-      camera.position.lerp(s.saved.p, k);
-      controls.target.lerp(s.saved.t, k);
+      goal = { p: FLOOD_CAM.clone().sub(FLOOD_TARGET).multiplyScalar(widen).add(FLOOD_TARGET), t: FLOOD_TARGET };
     }
+    if (!goal) return;
+    camera.position.lerpVectors(s.from.p, goal.p, e);
+    controls.target.lerpVectors(s.from.t, goal.t, e);
+    if (k >= 1) s.done = true;
   });
   return null;
 }
@@ -792,6 +917,7 @@ export default function BagScene(props: BagSceneProps) {
       <Float speed={1.6} rotationIntensity={props.flood ? 0 : 0.08} floatIntensity={props.flood ? 0 : idle ? 0.5 : 0.15}>
         <Bag {...props} />
       </Float>
+      <fog attach="fog" args={[HORIZON, 80, 600]} />
       <FloodScene flood={props.flood} />
       <group visible={!props.flood}>
         <Sparkles count={45} scale={[7, 4, 4]} position={[0, 0.8, 0]} size={3} speed={0.35} opacity={0.8} color="#ffffff" />
