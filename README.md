@@ -42,7 +42,7 @@ Malaysia floods every monsoon, and when it does, three things fail at once.
 
 ## Features
 
-### The backpack (LifeVault)
+### The backpack (LivePack)
 - **Waterproof, sealed roll-top** with organised compartments for IC, passport, certificates, medical records and cash.
 - **Built-in FloodMesh beacon** in the front pocket: a chip with its own **swappable battery**, a physical SOS button, and a QR/NFC tag that holds privacy-protected emergency info.
 - **LastSignal:** when the battery runs low, the beacon and phone send one final alert with the last known location before shutting down.
