@@ -102,15 +102,18 @@ Malaysia floods every monsoon, and when it does, three things fail at once.
 ## Run it
 
 ```bash
-# Frontend
-cd frontend && npm install && npm run dev        # http://localhost:3000
-
-# Backend (see backend/AGENTS.md; the folder still holds the initial scaffold)
+# 1. Backend (FastAPI + Supabase Postgres). Put DATABASE_URL=... in backend/.env (git-ignored)
 cd backend && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/uvicorn main:app --reload --port 8000 --env-file .env
+.venv/bin/python seed.py            # optional: 10 demo victims, sent through the API
+
+# 2. Frontend
+cd frontend && npm install && npm run dev        # http://localhost:3000
 ```
 
-Optional environment variables (put them in a git-ignored `frontend/.env.local`, never commit keys):
-`NEXT_PUBLIC_GOOGLE_MAPS_KEY` (real map; without it an offline map is shown) and `NEXT_PUBLIC_API_URL` (default `http://localhost:5000`).
+The app talks to `http://localhost:8000` (override with `NEXT_PUBLIC_API_URL`). If the backend is down, the dashboard falls back to built-in demo data and says so, and the phone app sends SOS over the simulated mesh instead.
+
+Optional frontend variable (in git-ignored `frontend/.env.local`): `NEXT_PUBLIC_GOOGLE_MAPS_KEY` for the real map; without it an offline map is shown.
 
 | Route | What it is |
 |---|---|

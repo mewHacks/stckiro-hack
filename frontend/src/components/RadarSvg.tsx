@@ -1,13 +1,15 @@
-import { avatar, REQUESTS, RESCUERS, type Request } from "@/lib/data";
+import { REQUESTS, RESCUERS, type Request, type Rescuer } from "@/lib/data";
 
 // ponytail: stylised SVG map, swap for Mapbox/Leaflet when real coordinates arrive
 export type Focus = { x: number; y: number; r: number };
 export default function RadarSvg({
   requests = REQUESTS,
+  rescuers = RESCUERS,
   showRoute = true,
   focus,
 }: {
   requests?: Request[];
+  rescuers?: Rescuer[];
   showRoute?: boolean;
   focus?: Focus; // "nearby" radius around the selected rescue team
 }) {
@@ -49,7 +51,7 @@ export default function RadarSvg({
       )}
 
       {/* heat */}
-      {requests.filter((r) => r.status !== "Rescued").map((r) => (
+      {requests.filter((r) => r.status !== "Rescued" && !r.noLoc).map((r) => (
         <circle key={`h${r.id}`} cx={r.x} cy={r.y} r={30 + r.severity * 14} fill="url(#heat)" />
       ))}
 
@@ -61,7 +63,7 @@ export default function RadarSvg({
       )}
 
       {/* victims */}
-      {requests.map((r) => {
+      {requests.filter((r) => !r.noLoc).map((r) => {
         const c = r.status === "Rescued" ? "#10b981" : r.severity === 3 ? "#ef4444" : "#f97316";
         return (
           <g key={r.id}>
@@ -72,7 +74,7 @@ export default function RadarSvg({
               </circle>
             )}
             <circle cx={r.x} cy={r.y} r="15" fill="#fff" />
-            <image href={avatar(r.id)} x={r.x - 12} y={r.y - 12} width="24" height="24" clipPath="url(#avatar)" preserveAspectRatio="xMidYMid slice" />
+            {r.photo ? <image href={r.photo} x={r.x - 12} y={r.y - 12} width="24" height="24" clipPath="url(#avatar)" preserveAspectRatio="xMidYMid slice" /> : <><circle cx={r.x} cy={r.y} r="12" fill="#c7d7ff" /><text x={r.x} y={r.y + 5} textAnchor="middle" fontSize="13" fontWeight="900" fill="#2548d4">{r.name[0]}</text></>}
             <circle cx={r.x} cy={r.y} r="13.5" fill="none" stroke={c} strokeWidth="3" />
             {r.id.startsWith("LIVE") && (
               <text x={r.x + 20} y={r.y + 4} fontSize="12" fontWeight="900" fill="#ef4444">LIVE SOS</text>
@@ -82,7 +84,7 @@ export default function RadarSvg({
       })}
 
       {/* rescue teams */}
-      {RESCUERS.map((t) => (
+      {rescuers.map((t) => (
         <g key={t.id} transform={`translate(${t.x} ${t.y})`}>
           <rect x="-16" y="-16" width="32" height="32" rx="11" fill="#3f6df0" stroke="#fff" strokeWidth="3" />
           <text y="5" textAnchor="middle" fontSize="13" fontWeight="900" fill="#fff">{t.id[0]}</text>

@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 from contextlib import asynccontextmanager
 
@@ -72,6 +73,9 @@ async def db_unavailable(request: Request, exc: Exception):
 
 
 def to_victim(r: asyncpg.Record) -> Victim:
+    # jsonb comes back as str unless a codec is registered
+    payload = r["payload"]
+    payload = json.loads(payload) if isinstance(payload, str) else (payload or {})
     return Victim(
         id=r["id"],
         name=r["name"] or r["bag"],
@@ -83,6 +87,9 @@ def to_victim(r: asyncpg.Record) -> Victim:
         via=r["via"],
         lat=r["lat"],
         lng=r["lng"],
+        bag=r["bag"],
+        reason=payload.get("reason", ""),
+        battery=payload.get("battery"),
     )
 
 

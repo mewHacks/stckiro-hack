@@ -1,12 +1,13 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowLeft, Radio, Users, Wifi } from "lucide-react";
+import { ArrowLeft, Database, DatabaseZap, Radio, Users, Wifi } from "lucide-react";
+import Face from "@/components/Face";
 import Logo from "@/components/Logo";
 import RadarMap from "@/components/RadarMap";
-import { avatar, LIVE_POS, REQUESTS, RESCUERS, type Request, type Status } from "@/lib/data";
+import { avatar, LIVE_POS, type Request, type Status } from "@/lib/data";
+import { advanceVictim, useLive } from "@/lib/live";
 import { useLiveSosRaw, type LiveSos } from "@/lib/net";
 
 const NEXT: Record<Status, Status | null> = { Pending: "Assigned", Assigned: "Rescued", Rescued: null };
@@ -16,29 +17,31 @@ const CHIP: Record<Status, string> = {
   Rescued: "bg-emerald-100 text-emerald-700",
 };
 const NEARBY_KM = 2.5;
-const km = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y) / 100;
+const km = (a: { x: number; y: number }, b: { x: number; y: number; noLoc?: boolean }) => (b.noLoc ? Infinity : Math.hypot(a.x - b.x, a.y - b.y) / 100);
 
 export default function Admin() {
-  const [overrides, setOverrides] = useState<Record<string, Status>>({});
-  const [teamId, setTeamId] = useState(RESCUERS[0].id);
+  const { victims, rescuers, connected, error } = useLive();
+  const [overrides, setOverrides] = useState<Record<string, Status>>({}); // only for rows that don't live on the server
+  const [teamId, setTeamId] = useState("Alpha");
   const [nearbyOnly, setNearbyOnly] = useState(false);
   const liveRaw = useLiveSosRaw();
 
-  // all victims = mock reports + the live SOS from the demo phone (any tab)
+  // victims = backend rows (or demo data when offline) + a mesh SOS relayed by the phone app in this browser
   const reqs = useMemo(() => {
-    const live = liveRaw ? (JSON.parse(liveRaw) as LiveSos) : null;
-    const all: Request[] = live
-      ? [{ id: `LIVE-${live.at}`, name: "Demo phone · FS-2041", area: "Taman Sri Muda", people: 4, severity: live.priority === "high" ? 2 : 3, last: "just now", status: "Pending", via: live.via, reason: live.reason, lastSignal: live.lastSignal, ...LIVE_POS }, ...REQUESTS]
-      : REQUESTS;
-    return all.map((r) => ({ ...r, status: overrides[r.id] ?? r.status }));
-  }, [liveRaw, overrides]);
+    const mesh = liveRaw ? (JSON.parse(liveRaw) as LiveSos) : null;
+    const local: Request[] = mesh
+      ? [{ id: `LIVE-${mesh.at}`, name: "Aisyah Rahman", photo: avatar("FS-2041"), area: "Taman Sri Muda", people: 1, severity: mesh.priority === "high" ? 2 : 3, last: "just now", status: "Pending", via: mesh.via, reason: mesh.reason, lastSignal: mesh.lastSignal, ...LIVE_POS }]
+      : [];
+    return [...local, ...victims].map((r) => (r.apiId === undefined ? { ...r, status: overrides[r.id] ?? r.status } : r));
+  }, [liveRaw, victims, overrides]);
 
   const advance = (r: Request) => {
+    if (r.apiId !== undefined) return void advanceVictim(r.apiId);
     const n = NEXT[r.status];
     if (n) setOverrides((o) => ({ ...o, [r.id]: n }));
   };
 
-  const team = RESCUERS.find((t) => t.id === teamId)!;
+  const team = rescuers.find((t) => t.id === teamId) ?? rescuers[0] ?? { id: "Alpha", x: 200, y: 250 };
   const withDist = reqs
     .map((r) => ({ ...r, km: km(team, r) }))
     .sort((a, b) => Number(a.status === "Rescued") - Number(b.status === "Rescued") || a.km - b.km);
@@ -68,6 +71,9 @@ export default function Admin() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          <span title={error ?? ""} className={`glass flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold ${connected ? "text-emerald-700" : "text-amber-700"}`}>
+            {connected ? <DatabaseZap size={14} /> : <Database size={14} />} {connected ? "Live · backend" : "Demo data · backend offline"}
+          </span>
           <span className="glass flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold">
             <Wifi size={14} className="text-emerald-600" /> {reqs.length - viaMesh} via internet
           </span>
@@ -98,7 +104,7 @@ export default function Admin() {
           <div className="flex items-center justify-between gap-2">
             <p className="font-display text-lg">Victims near you</p>
             <div className="flex gap-1">
-              {RESCUERS.map((t) => (
+              {rescuers.map((t) => (
                 <button
                   key={t.id}
                   onClick={() => setTeamId(t.id)}
@@ -131,7 +137,7 @@ export default function Admin() {
               return (
                 <li key={r.id} className={`flex items-center gap-3 rounded-2xl bg-white p-3 ${near ? "" : "opacity-60"} ${r.id.startsWith("LIVE") ? "ring-2 ring-red-400" : ""}`}>
                   <span className={`h-10 w-1.5 rounded-full ${r.severity === 3 ? "bg-red-500" : r.severity === 2 ? "bg-orange-400" : "bg-sky"}`} />
-                  <Image src={avatar(r.id)} alt={r.name} width={44} height={44} className="size-11 shrink-0 rounded-full object-cover ring-2 ring-white" />
+                  <Face src={r.photo} name={r.name} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-extrabold">{r.name}</p>
                     {r.reason && (
@@ -141,7 +147,7 @@ export default function Admin() {
                       </p>
                     )}
                     <p className="flex flex-wrap items-center gap-1 text-xs font-semibold text-ink">
-                      <span className="font-extrabold text-brand">{r.km.toFixed(1)} km</span> · {r.area} · <Users size={12} /> {r.people} · {r.last}
+                      <span className="font-extrabold text-brand">{Number.isFinite(r.km) ? `${r.km.toFixed(1)} km` : "no GPS"}</span> · {r.area} · <Users size={12} /> {r.people} · {r.last}
                       {r.via === "mesh" ? <Radio size={12} className="text-amber-600" aria-label="via mesh" /> : <Wifi size={12} className="text-emerald-600" aria-label="via internet" />}
                     </p>
                   </div>
@@ -158,7 +164,7 @@ export default function Admin() {
                 </li>
               );
             })}
-            {list.length === 0 && <li className="py-8 text-center text-sm font-bold text-ink">No victims within {NEARBY_KM} km 🎉</li>}
+            {list.length === 0 && <li className="py-8 text-center text-sm font-bold text-ink">{reqs.length === 0 ? "No alerts yet. Waiting for the first SOS…" : `No victims within ${NEARBY_KM} km`}</li>}
           </ul>
         </section>
       </div>

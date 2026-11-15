@@ -1,0 +1,12 @@
+import { launch, sleep } from "./rec.mjs";
+const b = await launch({ width: 1920, height: 1080 });
+await b.goto("http://localhost:3000/", 4000);
+const stop = await b.record("/private/tmp/claude-501/-Users-yihui-Documents-stckiro-hack/c1e6cfe4-1895-4df7-be83-acf77c8fba11/scratchpad/test.mp4");
+await sleep(1500);
+await b.drag(700, 500, 1100, 480, 1200);
+await sleep(600);
+await b.click("Open bag");
+await sleep(3000);
+console.log(await stop());
+console.log(b.logs.join("\n") || "no exceptions");
+b.close();

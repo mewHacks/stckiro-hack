@@ -34,11 +34,15 @@ export type Request = {
   via: "internet" | "mesh"; // how the SOS reached us
   reason?: string; // why they pressed SOS (priority alert)
   lastSignal?: boolean; // final transmission before the battery died
+  apiId?: number; // set when the row comes from the backend (PATCH target)
+  photo?: string; // profile photo, when we have one
+  battery?: number;
+  noLoc?: boolean; // alert had no GPS fix: listed, but not drawn on the map
   x: number; // map coords, viewBox 400x500; 100 units ≈ 1 km
   y: number;
 };
 
-export const REQUESTS: Request[] = [
+const RAW: Request[] = [
   { id: "FS-2041", name: "Aisyah R.", area: "Taman Sri Muda", people: 4, severity: 3, last: "1m ago", status: "Pending", via: "mesh", x: 150, y: 210 },
   { id: "FS-1187", name: "Kumar S.", area: "Jalan Sentosa", people: 2, severity: 3, last: "3m ago", status: "Pending", via: "mesh", x: 175, y: 240 },
   { id: "FS-0932", name: "Lim W.", area: "Kg. Baru Hilir", people: 1, severity: 2, last: "6m ago", status: "Assigned", via: "internet", x: 255, y: 300 },
@@ -51,10 +55,13 @@ export const REQUESTS: Request[] = [
   { id: "FS-1420", name: "Hafiz M.", area: "Seksyen 25", people: 2, severity: 1, last: "18m ago", status: "Assigned", via: "internet", x: 340, y: 210 },
 ];
 
+export const REQUESTS: Request[] = RAW.map((r) => ({ ...r, photo: `/people/${r.id}.jpg` }));
+
 /** Where a live SOS from the demo phone lands on the map. */
 export const LIVE_POS = { x: 125, y: 345 };
 
-export const RESCUERS = [
+export type Rescuer = { id: string; x: number; y: number };
+export const RESCUERS: Rescuer[] = [
   { id: "Alpha", x: 90, y: 380 },
   { id: "Bravo", x: 320, y: 90 },
 ];
@@ -79,3 +86,11 @@ export const SOS_REASONS = [
   { id: "vulnerable", label: "Elderly / child with me", priority: "high" },
 ] as const;
 export type SosReason = { id: string; label: string; priority: "critical" | "high" }; // also covers the automatic "battery" reason
+
+/** Inverse of toLatLng: real coordinates → the map units the radar uses. */
+export const fromLatLng = (lat: number, lng: number) => ({
+  x: 200 + (lng - CENTER.lng) * 111.32 * Math.cos((CENTER.lat * Math.PI) / 180) * 100,
+  y: 250 - (lat - CENTER.lat) * 111.32 * 100,
+});
+/** Backend alerts carry no photo: reuse a known profile photo when the first name matches. */
+export const photoFor = (name: string) => REQUESTS.find((r) => r.name.split(" ")[0] === name.split(" ")[0])?.photo;

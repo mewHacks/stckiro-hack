@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 
-export const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+export const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 // ---------- connectivity ----------
 const subNet = (cb: () => void) => {
@@ -52,3 +52,15 @@ const subSos = (cb: () => void) => {
 };
 /** Returns the raw JSON string (stable between renders); parse it where used. */
 export const useLiveSosRaw = () => useSyncExternalStore(subSos, () => localStorage.getItem(KEY), () => null);
+
+/** POST the alert; true only if the backend stored it (202). 5xx = not stored → retry once, then caller falls back to mesh. */
+export async function postSos(body: unknown): Promise<boolean> {
+  for (let i = 0; i < 2; i++) {
+    try {
+      const r = await fetch(`${API}/api/sos`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(5000) });
+      if (r.status === 202) return true;
+      if (r.status < 500) return false; // rejected (e.g. 422): retrying won't help
+    } catch {}
+  }
+  return false;
+}

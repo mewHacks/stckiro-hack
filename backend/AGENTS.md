@@ -2,7 +2,7 @@
 
 Guidance for AI coding agents (and humans) working in `backend/`. The backend is **one folder**. Don't create backend code anywhere else. The frontend is Next.js in `frontend/` and has its own file structure; don't edit it from here.
 
-> **Heads-up:** `app.py` / `requirements.txt` are still the initial **Flask** scaffold. The target stack is **FastAPI**. Replace the scaffold; don't mix both frameworks.
+> The backend is **FastAPI + asyncpg on Supabase Postgres** (`main.py`). It needs `DATABASE_URL` in the environment (never in code, never committed). Dev seed data: `.venv/bin/python seed.py`.
 
 ## What the backend does
 LiveBuoy is a smart waterproof backpack with an offline SOS beacon and a rescuer dashboard. The backend:
@@ -13,10 +13,10 @@ LiveBuoy is a smart waterproof backpack with an offline SOS beacon and a rescuer
 ## Stack and commands
 - Python 3.11+, **FastAPI**, **Uvicorn**, **Pydantic v2**.
 - Setup: `cd backend && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`
-- Run (dev): `.venv/bin/uvicorn main:app --reload --port 5000`
-- Docs UI: `http://localhost:5000/docs`
+- Run (dev): `.venv/bin/uvicorn main:app --reload --port 8000`
+- Docs UI: `http://localhost:8000/docs`
 
-The frontend defaults to `http://localhost:5000` (`NEXT_PUBLIC_API_URL`), so keep dev on **port 5000** unless the frontend env is changed too.
+The frontend defaults to `http://localhost:8000` (`NEXT_PUBLIC_API_URL`), so keep dev on **port 8000** unless the frontend env is changed too.
 
 ## Contract the frontend already uses (don't break)
 | Method | Path | Notes |
@@ -53,7 +53,7 @@ backend/
 Split into more files only when `main.py` gets unwieldy. Storage can start in memory or SQLite (`# ponytail:` note), then move to Postgres.
 
 ## Before you finish
-- `curl localhost:5000/api/health` returns `{"status":"ok"}`.
-- `curl -X POST localhost:5000/api/sos -H 'content-type: application/json' -d '{"bag":"FS-2041","at":1}'` succeeds.
+- `curl localhost:8000/api/health` returns `{"status":"ok"}`.
+- `curl -X POST localhost:8000/api/sos -H 'content-type: application/json' -d '{"bag":"FS-2041","at":1}'` succeeds.
 - Add one runnable check for any non-trivial logic (a small `test_*.py` using `fastapi.testclient`).
 - Update `requirements.txt` and this file if the contract changes.

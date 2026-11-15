@@ -52,6 +52,10 @@ class Victim(BaseModel):
     via: Via
     lat: Optional[float]
     lng: Optional[float]
+    # additive: lets the rescuer dashboard show why they pressed SOS (and flag LastSignal)
+    bag: str = ""
+    reason: str = ""
+    battery: Optional[int] = None
 
 
 class Rescuer(BaseModel):

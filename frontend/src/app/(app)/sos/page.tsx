@@ -4,7 +4,7 @@ import { useEffect, useEffectEvent, useState } from "react";
 import { BatteryCharging, BatteryWarning, Check, Cloud, Contact, Flag, HeartPulse, MapPin, Power, Radio, RadioTower, ShieldCheck, Smartphone, User, Wifi } from "lucide-react";
 import NetBadge from "@/components/NetBadge";
 import { LIVE_POS, SOS_REASONS, toLatLng, type SosReason } from "@/lib/data";
-import { API, clearSos, publishSos, serverReachable, useOnline, type Route } from "@/lib/net";
+import { clearSos, postSos, publishSos, serverReachable, useOnline, type Route } from "@/lib/net";
 
 // ponytail: rescue timeline after delivery is simulated; replace with backend status polling
 const STAGES = ["Sending", "Delivered", "Assigned", "Rescued"] as const;
@@ -65,7 +65,7 @@ export default function Sos() {
   }, [stage, route]);
 
   useEffect(() => {
-    if (stage === "Delivered" && route && sentReason)
+    if (stage === "Delivered" && route === "mesh" && sentReason)
       publishSos(route, { reason: sentReason.label, priority: sentReason.priority === "critical" ? "critical" : "high", lastSignal: sentReason.id === "battery" }); // rescuer dashboard picks this up live
   }, [stage, route, sentReason]);
 
@@ -93,15 +93,9 @@ export default function Sos() {
     setRoute(null);
     setSentReason(r);
     setStage("Sending");
-    const ok = await serverReachable();
-    setRoute(ok ? "internet" : "mesh");
-    if (ok)
-      // ponytail: fire-and-forget until the backend has /api/sos; delivery UI doesn't wait on it
-      fetch(`${API}/api/sos`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildPayload(r, batteryNow)),
-      }).catch(() => {});
+    // internet only counts once the backend has STORED the alert (202); anything else falls back to the mesh relay
+    const stored = (await serverReachable()) && (await postSos(buildPayload(r, batteryNow)));
+    setRoute(stored ? "internet" : "mesh");
   };
 
   const fire = useEffectEvent(() => send(reason, battery));

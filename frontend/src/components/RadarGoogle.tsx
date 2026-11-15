@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Layers, Satellite } from "lucide-react";
 import { AdvancedMarker, APIProvider, Map, useMap } from "@vis.gl/react-google-maps";
-import { avatar, MAP_CENTER, RESCUERS, toLatLng, type Request } from "@/lib/data";
+import { MAP_CENTER, toLatLng, type Request, type Rescuer } from "@/lib/data";
 import type { Focus } from "./RadarSvg";
 
 const ROUTE = [[90, 380], [120, 330], [150, 300], [150, 210]].map(([x, y]) => toLatLng(x, y));
@@ -35,7 +35,7 @@ function Overlays({ showRoute, focus }: { showRoute: boolean; focus?: Focus }) {
   return null;
 }
 
-export default function RadarGoogle({ apiKey, requests, showRoute = true, focus, onError }: { apiKey: string; requests: Request[]; showRoute?: boolean; focus?: Focus; onError: (msg: string) => void }) {
+export default function RadarGoogle({ apiKey, requests, rescuers, showRoute = true, focus, onError }: { apiKey: string; requests: Request[]; rescuers: Rescuer[]; showRoute?: boolean; focus?: Focus; onError: (msg: string) => void }) {
   // Google calls this global when it rejects the key (wrong key, API not enabled, billing off, referrer not allowed)
   useEffect(() => {
     (window as unknown as { gm_authFailure?: () => void }).gm_authFailure = () =>
@@ -58,7 +58,7 @@ export default function RadarGoogle({ apiKey, requests, showRoute = true, focus,
       >
         <Overlays showRoute={showRoute} focus={focus} />
 
-        {requests.map((r) => (
+        {requests.filter((r) => !r.noLoc).map((r) => (
           <AdvancedMarker key={r.id} position={toLatLng(r.x, r.y)} zIndex={r.severity}>
             <div className="relative grid place-items-center">
               {r.status !== "Rescued" && (
@@ -66,13 +66,13 @@ export default function RadarGoogle({ apiKey, requests, showRoute = true, focus,
               )}
               {r.status === "Pending" && <span className="absolute size-12 animate-ping rounded-full opacity-40" style={{ background: color(r) }} />}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={avatar(r.id)} alt={r.name} className="relative size-11 rounded-full border-[3px] object-cover shadow-lg" style={{ borderColor: color(r) }} />
+              {r.photo ? <img src={r.photo} alt={r.name} className="relative size-11 rounded-full border-[3px] object-cover shadow-lg" style={{ borderColor: color(r) }} /> : <span className="relative grid size-11 place-items-center rounded-full border-[3px] bg-sky font-black text-brand-deep shadow-lg" style={{ borderColor: color(r) }}>{r.name[0]}</span>}
               {r.id.startsWith("LIVE") && <span className="absolute left-12 whitespace-nowrap rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-black text-white">LIVE SOS</span>}
             </div>
           </AdvancedMarker>
         ))}
 
-        {RESCUERS.map((t) => (
+        {rescuers.map((t) => (
           <AdvancedMarker key={t.id} position={toLatLng(t.x, t.y)} zIndex={10}>
             <div className="grid size-9 place-items-center rounded-xl border-[3px] border-white bg-brand font-black text-white shadow-lg">{t.id[0]}</div>
           </AdvancedMarker>
