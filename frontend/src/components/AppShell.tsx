@@ -3,13 +3,13 @@
 import Link from "next/link";
 import Logo from "./Logo";
 import { usePathname } from "next/navigation";
-import { Briefcase, House, Radar, Siren, User, ArrowRight } from "lucide-react";
+import { ArrowRight, Backpack, Radar, Siren, User, Wifi } from "lucide-react";
 
 const NAV = [
-  { href: "/app", icon: House, label: "Home" },
+  { href: "/app", icon: Backpack, label: "Backpack" },
   { href: "/radar", icon: Radar, label: "Radar" },
-  { href: "/vault", icon: Briefcase, label: "Vault", center: true },
-  { href: "/sos", icon: Siren, label: "SOS" },
+  { href: "/sos", icon: Siren, label: "SOS", center: true }, // manual emergency button
+  { href: "/connect", icon: Wifi, label: "Connectivity" },
   { href: "/profile", icon: User, label: "Profile" },
 ];
 

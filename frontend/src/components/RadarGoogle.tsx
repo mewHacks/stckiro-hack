@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { Layers, Satellite } from "lucide-react";
 import { AdvancedMarker, APIProvider, Map, useMap } from "@vis.gl/react-google-maps";
 import { avatar, MAP_CENTER, RESCUERS, toLatLng, type Request } from "@/lib/data";
 import type { Focus } from "./RadarSvg";
@@ -41,11 +42,14 @@ export default function RadarGoogle({ apiKey, requests, showRoute = true, focus,
       onError("Google rejected the key. Check that Maps JavaScript API is enabled, billing is on, and the key allows this site (localhost:3000)");
   }, [onError]);
 
+  const [satellite, setSatellite] = useState(false);
+
   return (
     <APIProvider apiKey={apiKey} onError={(e) => onError(`Google Maps failed to load (${(e as Error)?.message ?? "network or key problem"})`)}>
       <Map
         defaultCenter={MAP_CENTER}
         defaultZoom={14}
+        mapTypeId={satellite ? "hybrid" : "roadmap"} // hybrid = satellite imagery + road/place labels
         mapId="DEMO_MAP_ID" // ponytail: swap for a styled Map ID from Google Cloud when you want custom styling
         gestureHandling="greedy"
         disableDefaultUI
@@ -74,6 +78,22 @@ export default function RadarGoogle({ apiKey, requests, showRoute = true, focus,
           </AdvancedMarker>
         ))}
       </Map>
+
+      <div className="glass absolute right-3 top-3 z-10 flex rounded-full p-1 text-xs font-extrabold">
+        {[
+          { sat: false, icon: Layers, label: "Map" },
+          { sat: true, icon: Satellite, label: "Satellite" },
+        ].map(({ sat, icon: Icon, label }) => (
+          <button
+            key={label}
+            onClick={() => setSatellite(sat)}
+            aria-pressed={satellite === sat}
+            className={`flex items-center gap-1 rounded-full px-3 py-1.5 transition ${satellite === sat ? "bg-navy text-white" : "text-navy"}`}
+          >
+            <Icon size={13} /> {label}
+          </button>
+        ))}
+      </div>
     </APIProvider>
   );
 }

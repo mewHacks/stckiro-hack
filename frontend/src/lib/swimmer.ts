@@ -1,0 +1,51 @@
+// Geometry for the flood demo: the backpack floats flat on a swimmer's chest while they hug it.
+// Pure numbers (no three.js) so scripts/check-swimmer.mjs can prove no part of the swimmer passes through the bag.
+
+export type V3 = [number, number, number];
+
+export const BAG_SCALE = 1.15;
+/** Bag centre while floating (world). */
+export const FLOOD_BAG_POS: V3 = [0.2, 1.15, 0];
+
+/**
+ * Bag-local point → world for the flood pose (Euler order YXZ, y = +90°, x = −90°):
+ * the bag lies front-up with its roll-top pointing toward −x (the swimmer's head).
+ */
+export const bagToWorld = ([x, y, z]: V3): V3 => [
+  -y * BAG_SCALE + FLOOD_BAG_POS[0],
+  z * BAG_SCALE + FLOOD_BAG_POS[1],
+  -x * BAG_SCALE + FLOOD_BAG_POS[2],
+];
+
+/** Generous bag-local bounding boxes of every bag part: [min, max]. */
+export const BAG_PARTS: Record<string, [V3, V3]> = {
+  body: [[-0.63, -0.83, -0.33], [0.63, 0.83, 0.33]],
+  frontPocket: [[-0.52, -0.73, 0.33], [0.52, -0.11, 0.48]],
+  leftPocket: [[-0.77, -0.75, -0.24], [-0.6, -0.05, 0.24]],
+  rightPocket: [[0.6, -0.75, -0.24], [0.77, -0.05, 0.24]],
+  frontStrap: [[-0.36, 0, 0.33], [-0.2, 0.9, 0.42]],
+  backPadding: [[-0.48, -0.56, -0.42], [0.48, 0.56, -0.33]],
+  shoulderStraps: [[-0.45, -0.8, -0.52], [0.45, 0.7, -0.3]],
+  grabLoop: [[-0.15, 0.55, -0.45], [0.15, 0.85, -0.3]],
+  rollTop: [[-0.66, 0.8, -0.33], [0.66, 1.12, 0.36]],
+  lidStrap: [[-0.34, 0.4, 0.33], [-0.22, 0.9, 0.42]],
+};
+
+// Swimmer, floating on their back, head toward −x, water surface at y = 0.
+export const TORSO = { pos: [0.15, 0.1, 0] as V3, size: [2.3, 0.8, 1.9] as V3 }; // rounded box
+export const HIPS = { pos: [1.6, 0.02, 0] as V3, size: [0.9, 0.65, 1.5] as V3 };
+export const HEAD = { pos: [-1.75, 0.22, 0] as V3, r: 0.42 };
+export const SHOULDER = { pos: [-0.9, 0.45, 1.0] as V3, r: 0.26 }; // mirror z for the other side
+
+/** Arm centre-line for the +z side (mirror z for −z): shoulder → around the bag's side → hands clasped on top. */
+export const ARM_POINTS: V3[] = [
+  [-0.9, 0.45, 1.0],
+  [-0.55, 0.8, 1.14],
+  [-0.2, 1.2, 1.2],
+  [0.0, 1.6, 1.08],
+  [0.02, 1.86, 0.6],
+  [0.02, 1.9, 0.15],
+];
+export const ARM_R = 0.13;
+export const SLEEVE_R = 0.17;
+export const HAND_R = 0.16;

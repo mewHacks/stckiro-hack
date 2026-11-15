@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import { Check, Cloud, Radio, RadioTower, ShieldCheck, Smartphone, Wifi } from "lucide-react";
 import NetBadge from "@/components/NetBadge";
 import { API, clearSos, publishSos, serverReachable, useOnline, type Route } from "@/lib/net";
@@ -27,15 +27,14 @@ const HOPS: Record<Route, { icon: typeof Radio; label: string }[]> = {
     { icon: ShieldCheck, label: "Gateway" },
   ],
 };
-const HOLD_MS = 1500;
+const COUNTDOWN = 3; // seconds to cancel an accidental tap
 
 export default function Sos() {
   const online = useOnline();
   const [stage, setStage] = useState<Stage>("Idle");
   const [route, setRoute] = useState<Route | null>(null); // decided at send time
-  const [hold, setHold] = useState(0); // 0..1
+  const [countdown, setCountdown] = useState<number | null>(null); // tap → 3,2,1 → send; tap again cancels
   const [hop, setHop] = useState(0);
-  const timer = useRef<number>(0);
 
   // advance the timeline (waits until the route is known)
   useEffect(() => {
@@ -71,25 +70,30 @@ export default function Sos() {
       }).catch(() => {});
   };
 
-  const start = () => {
+  const fire = useEffectEvent(() => send());
+  useEffect(() => {
+    if (countdown === null) return;
+    const t = setTimeout(() => {
+      if (countdown <= 1) {
+        setCountdown(null);
+        fire();
+      } else setCountdown(countdown - 1);
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [countdown]);
+
+  const tap = () => {
     if (stage !== "Idle") return;
-    const t0 = performance.now();
-    const tick = () => {
-      const p = Math.min((performance.now() - t0) / HOLD_MS, 1);
-      setHold(p);
-      if (p < 1) timer.current = requestAnimationFrame(tick);
-      else send();
-    };
-    timer.current = requestAnimationFrame(tick);
+    if (countdown === null) {
+      navigator.vibrate?.(60);
+      setCountdown(COUNTDOWN);
+    } else setCountdown(null); // cancel
   };
-  const cancel = () => {
-    cancelAnimationFrame(timer.current);
-    if (stage === "Idle") setHold(0);
-  };
+
   const reset = () => {
     setStage("Idle");
     setRoute(null);
-    setHold(0);
+    setCountdown(null);
     setHop(0);
     clearSos();
   };
@@ -98,37 +102,36 @@ export default function Sos() {
   const idx = STAGES.indexOf(stage as (typeof STAGES)[number]);
   const shownHop = stage === "Sending" ? (route ? hop : -1) : active ? 3 : -1;
   const hops = HOPS[route ?? (online ? "internet" : "mesh")];
-  const label = stage === "Sending" && !route ? "Checking network…" : active ? stage : "Hold 1.5s";
+  const label = stage === "Sending" && !route ? "Checking network…" : active ? stage : countdown !== null ? `Sending in ${countdown}… tap to cancel` : "Tap to send";
+  const arming = countdown !== null;
+  const ring = active ? 1 : arming ? (COUNTDOWN - countdown + 1) / COUNTDOWN : 0;
 
   return (
     <div className="px-5 pt-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl text-white">SOS</h1>
+        <h1 className="text-xl text-white">Emergency SOS</h1>
         <NetBadge />
       </div>
-      <p className="mt-1 text-sm font-bold text-white/85">
-        {online ? "Online: sends over Wi-Fi / data, falls back to mesh if the server is unreachable" : "Offline: relays peer-to-peer through nearby FloodMesh devices"}
+      <p className="mt-1 rounded-2xl bg-white/85 px-3 py-2 text-sm font-extrabold text-red-600">
+        Only press if it&apos;s very, very urgent. Tap SOS, and it sends after 3 seconds unless you tap again to cancel.
       </p>
 
       <div className="mt-6 grid place-items-center">
         <button
-          onPointerDown={start}
-          onPointerUp={cancel}
-          onPointerLeave={cancel}
-          onContextMenu={(e) => e.preventDefault()}
-          className="relative grid size-56 touch-none select-none place-items-center rounded-full"
-          style={{ background: `conic-gradient(#ef4444 ${(active ? 1 : hold) * 360}deg, rgb(255 255 255 / .55) 0)` }}
-          aria-label="Hold to send SOS"
+          onClick={tap}
+          className="relative grid size-56 select-none place-items-center rounded-full transition-[background] duration-1000"
+          style={{ background: `conic-gradient(#ef4444 ${ring * 360}deg, rgb(255 255 255 / .55) 0)` }}
+          aria-label={arming ? "Cancel SOS" : "Send SOS"}
         >
-          {active && stage !== "Rescued" && <span className="absolute inset-0 animate-ping rounded-full bg-red-400/30" />}
+          {(active || arming) && stage !== "Rescued" && <span className="absolute inset-0 animate-ping rounded-full bg-red-400/30" />}
           <span
             className={`grid size-44 place-items-center rounded-full text-white shadow-2xl transition ${
               stage === "Rescued" ? "bg-emerald-500 shadow-emerald-500/40" : "bg-red-500 shadow-red-500/40"
-            } ${hold > 0 && !active ? "scale-95" : ""}`}
+            } ${arming ? "scale-95" : ""}`}
           >
             <span className="text-center">
               <span className="font-display block text-4xl">{stage === "Rescued" ? "Safe" : "SOS"}</span>
-              <span className="text-xs font-bold opacity-90">{label}</span>
+              <span className="block px-4 text-xs font-bold opacity-90">{label}</span>
             </span>
           </span>
         </button>
