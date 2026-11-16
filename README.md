@@ -2,11 +2,17 @@
 
 # LiveBuoy
 
-### *Protect what matters. Stay connected when it matters most.*
+### *Your lifeline in floods.*
+*Protect what matters. Stay connected when it matters most.*
+
+![STC x Kiro Mini Hackathon 2026: 1st Runner Up](https://img.shields.io/badge/%F0%9F%8F%85_STC_x_KIRO_MINI_HACKATHON_2026-1ST_RUNNER_UP-5B9BF8?labelColor=4a4a4a&style=for-the-badge)
+[![Try it live](https://img.shields.io/badge/%F0%9F%94%97_TRY_IT_LIVE-LIVEBUOY.ONRENDER.COM-22C55E?labelColor=4a4a4a&style=for-the-badge)](https://livebuoy.onrender.com/)
 
 ![LiveBuoy: the flood-ready backpack on rising water](docs/cover.jpg)
 
 **A waterproof backpack that keeps your documents dry and sends your SOS even when the phone network is down.**
+
+*Team Chikwa · STC x Kiro Mini Hackathon 2026 · Track: Disaster Recovery*
 
 </div>
 
@@ -14,22 +20,23 @@
 
 ## Problem
 
-Malaysia floods every monsoon, and when it does, three things fail at once.
+**Flood rescuers struggle to locate flood victims because conditions during a flood are chaotic.**
+
+Meet **Pn Aisyah, 70, Kelantan**: no phone signal, her documents are wet, and the rescue team is asking *"Where is she?"*
 
 | | What goes wrong |
 |---|---|
-| **Documents are lost** | IC, passport, birth certificates and medical records are destroyed or left behind in a rushed evacuation. |
-| **Communication breaks** | Cell towers and internet fail, so people can't call for help or share where they are. Filling in a rescue form while stranded is not realistic. |
-| **Rescuers are blind** | Rescue teams can't see who needs help, where they are, or which roads are passable. |
+| **Documents are lost** | IC, passport and medical records are destroyed or left behind in a rushed evacuation. |
+| **Communication breaks** | Cell towers and internet fail, so people can't call for help or share where they are. |
+| **Rescuers are blind** | Rescue teams can't see who needs help or where they are. |
 
 **The scale of it**
 
-- **~4.82 million people (about 22% of Malaysia's population)** live in flood-prone areas, across roughly **29,000 km²**. This is an older DID-attributed estimate ([ADRC, 2005](https://www.adrc.asia/publications/TDRM2005/TDRM_Good_Practices/PDF/PDF-2005e/Chapter3_3.3.6.pdf)). A JICA study based on DID's 2003 data puts it at 5.67 million people ([JICA report](https://www.jica.go.jp/jica-ri/research/strategies/l75nbg00000bac29-att/Report_Malaysia_Final_JICAv2.pdf)).
-- **5,648 flood-prone sites** were identified nationwide by the fire department in 2023, most in Sarawak, Sabah and Pahang ([Malay Mail](https://www.malaymail.com/amp/news/malaysia/2023/11/14/bomba-identifies-5648-flood-prone-sites-nationwide-most-in-sarawak-sabah-and-pahang/101980)).
-- **December 2021 floods:** 54 deaths, about **125,000 people displaced** and **RM 5.3 to 6.5 billion** in government-estimated damage, with 20 deaths in Selangor alone ([Wikipedia](https://www.wikipedia.org/wiki/December_2021_Malaysian_floods)).
-- **Late 2024 floods:** more than **122,000 people were evacuated** by 30 November 2024, passing the 118,000 evacuated in the 2014 floods ([ReliefWeb](https://reliefweb.int/disaster/fl-2024-000218-mys)).
-
-> Figures differ between agencies and years (affected vs. displaced vs. evacuated), so treat them as orders of magnitude rather than exact counts. The population-at-risk numbers are old; we found no single current official figure.
+| | |
+|---|---|
+| **~500 M** | people affected by floods per year |
+| **29.4%** | of flood victims lose personal documents |
+| **323** | telecommunication towers knocked offline in the late 2024 floods |
 
 ## Target users
 
@@ -38,7 +45,13 @@ Malaysia floods every monsoon, and when it does, three things fail at once.
 
 ## Solution
 
-**LiveBuoy is a waterproof leather backpack with a built-in SOS beacon that relays your alert through nearby devices when there is no internet, paired with a rescuer dashboard that shows every victim on a live map.**
+**LiveBuoy is a 2-in-1 solution: a floating, waterproof backpack (LivePack) with a built-in offline SOS beacon (FloodMesh), paired with a platform and dashboard that shows every victim and rescuer in one place.**
+
+### How it works
+
+| Prepare | Trigger | Relay | Respond |
+|---|---|---|---|
+| Receive a flood alert through verified portals. Pack documents in the LivePack. Tie it to your info via the app. | On evacuation, turn on FloodMesh. Long press for an emergency priority call. | Broadcast location continuously over the internet or p2p Bluetooth. Phone and LivePack can both send signals. | Dashboard shows live victim locations. Rescue teams mark victims to save. Two-way signals between rescuer and victim. |
 
 ## Features
 
@@ -70,11 +83,25 @@ Malaysia floods every monsoon, and when it does, three things fail at once.
 | Layer | Tech |
 |---|---|
 | Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4 |
-| 3D | three.js, React Three Fiber, drei, custom GLSL ocean (Gerstner waves) |
+| 3D demo | three.js, React Three Fiber, drei, custom GLSL ocean (Gerstner waves) |
 | Maps | Google Maps JavaScript API (`@vis.gl/react-google-maps`) with an offline SVG fallback |
-| Backend | FastAPI + Uvicorn + Pydantic (see [`backend/AGENTS.md`](backend/AGENTS.md)) |
+| Backend | FastAPI + Uvicorn + Pydantic, Supabase Postgres (see [`backend/AGENTS.md`](backend/AGENTS.md)) |
+| Deployment | Docker, Render |
 | Connectivity | Online/offline detection with a real server-reachability check, falling back to peer-to-peer FloodMesh relay |
 | Hardware (prototype plan) | Battery-powered beacon with short-range radio and GNSS, QR/NFC tag |
+
+## Competitor analysis
+
+LiveBuoy is the only everyday safety bag that sends offline SOS alerts and creates two-way visibility between victims and rescuers.
+
+| | SOS beacon | Victim–rescuer signals | Offline live location | Emergency bag |
+|---|:-:|:-:|:-:|:-:|
+| Gov flood apps (MyDIMS) | ✗ | ✗ | ✗ | ✗ |
+| Bridgefy (mesh app) | ✗ | ✓ | ✗ | ✗ |
+| Garmin inReach | ✓ | ✓ | ✓ | ✗ |
+| Ushahidi | ✗ | ✓ | ✗ | ✗ |
+| Ukuran (emergency bag) | ✗ | ✗ | ✗ | ✓ |
+| **LiveBuoy** | ✓ | ✓ | ✓ | ✓ |
 
 ## Business value
 
@@ -88,8 +115,9 @@ Malaysia floods every monsoon, and when it does, three things fail at once.
 
 ## Impact
 
-- **Documents survive:** people keep proof of identity and medical history, which speeds up relief and recovery.
-- **Faster rescue:** SOS reaches rescuers even with no signal, and arrives with the reason, medical info and exact location, so rescuers can **prioritise the most critical cases first**.
+- **Less document loss (target: 80%):** people keep proof of identity and medical history, which speeds up relief and reduces recovery costs.
+- **SOS delivery success:** offline SOS communication keeps working when networks fail.
+- **Faster rescue response:** faster victim detection and coordination. The SOS arrives with the reason, medical info and exact location, so rescuers can **prioritise the most critical cases first**.
 - **No dead end when the battery dies:** LastSignal gets one final location out.
 - **Better coordination:** rescuers see all victims, distances and status on one map instead of piecing together phone calls.
 
