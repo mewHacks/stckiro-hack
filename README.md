@@ -6,7 +6,8 @@
 *Protect what matters. Stay connected when it matters most.*
 
 ![STC x Kiro Mini Hackathon 2026: 1st Runner Up](https://img.shields.io/badge/%F0%9F%8F%85_STC_x_KIRO_MINI_HACKATHON_2026-1ST_RUNNER_UP-5B9BF8?labelColor=4a4a4a&style=for-the-badge)
-[![Try it live](https://img.shields.io/badge/%F0%9F%94%97_TRY_IT_LIVE-LIVEBUOY.ONRENDER.COM-22C55E?labelColor=4a4a4a&style=for-the-badge)](https://livebuoy.onrender.com/)
+[![Live URL](https://img.shields.io/badge/%F0%9F%94%97_LIVE_URL-22C55E?labelColor=4a4a4a&style=for-the-badge)](https://livebuoy.onrender.com/)
+[![Demo Video](https://img.shields.io/badge/%F0%9F%8E%AC_DEMO_VIDEO-EF4444?labelColor=4a4a4a&style=for-the-badge)](https://youtu.be/eWgFkD17qo4?si=N60784GksrdQphFk)
 
 ![LiveBuoy: the flood-ready backpack on rising water](docs/cover.jpg)
 
